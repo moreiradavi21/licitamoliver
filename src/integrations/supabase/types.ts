@@ -14,7 +14,474 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      document_analyses: {
+        Row: {
+          attention: Json
+          created_at: string
+          extracted: Json
+          favorable: Json
+          file_name: string
+          id: string
+          opportunity_id: string | null
+          risks: Json
+          summary: string | null
+          user_id: string
+        }
+        Insert: {
+          attention?: Json
+          created_at?: string
+          extracted?: Json
+          favorable?: Json
+          file_name: string
+          id?: string
+          opportunity_id?: string | null
+          risks?: Json
+          summary?: string | null
+          user_id: string
+        }
+        Update: {
+          attention?: Json
+          created_at?: string
+          extracted?: Json
+          favorable?: Json
+          file_name?: string
+          id?: string
+          opportunity_id?: string | null
+          risks?: Json
+          summary?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_analyses_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      item_supplier_prices: {
+        Row: {
+          created_at: string
+          delivery_days: number | null
+          freight: number
+          id: string
+          item_id: string
+          notes: string | null
+          price: number
+          quoted_at: string
+          role: string
+          stock_confirmed: boolean
+          supplier_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          delivery_days?: number | null
+          freight?: number
+          id?: string
+          item_id: string
+          notes?: string | null
+          price?: number
+          quoted_at?: string
+          role?: string
+          stock_confirmed?: boolean
+          supplier_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          delivery_days?: number | null
+          freight?: number
+          id?: string
+          item_id?: string
+          notes?: string | null
+          price?: number
+          quoted_at?: string
+          role?: string
+          stock_confirmed?: boolean
+          supplier_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_supplier_prices_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_supplier_prices_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      items: {
+        Row: {
+          avg_margin: number | null
+          brand: string | null
+          category: string | null
+          created_at: string
+          gtin: string | null
+          historic_cost: number | null
+          id: string
+          manufacturer_code: string | null
+          max_price: number | null
+          min_price: number | null
+          model: string | null
+          name: string
+          ncm: string | null
+          notes: string | null
+          specs: string | null
+          updated_at: string
+          user_id: string
+          won_before: boolean
+        }
+        Insert: {
+          avg_margin?: number | null
+          brand?: string | null
+          category?: string | null
+          created_at?: string
+          gtin?: string | null
+          historic_cost?: number | null
+          id?: string
+          manufacturer_code?: string | null
+          max_price?: number | null
+          min_price?: number | null
+          model?: string | null
+          name: string
+          ncm?: string | null
+          notes?: string | null
+          specs?: string | null
+          updated_at?: string
+          user_id: string
+          won_before?: boolean
+        }
+        Update: {
+          avg_margin?: number | null
+          brand?: string | null
+          category?: string | null
+          created_at?: string
+          gtin?: string | null
+          historic_cost?: number | null
+          id?: string
+          manufacturer_code?: string | null
+          max_price?: number | null
+          min_price?: number | null
+          model?: string | null
+          name?: string
+          ncm?: string | null
+          notes?: string | null
+          specs?: string | null
+          updated_at?: string
+          user_id?: string
+          won_before?: boolean
+        }
+        Relationships: []
+      }
+      opportunities: {
+        Row: {
+          agency: string | null
+          classification: string
+          created_at: string
+          delivery_days: number | null
+          delivery_place: string | null
+          dispute_at: string | null
+          documents_pending: boolean
+          estimated_profit: number | null
+          estimated_value: number | null
+          id: string
+          notes: string | null
+          number: string
+          payment_days: number | null
+          platform: string | null
+          process_url: string | null
+          published_at: string | null
+          realized_profit: number | null
+          status: string
+          supplier_confirmed: boolean
+          traffic_light: string
+          uasg: string | null
+          updated_at: string
+          user_id: string
+          won_value: number | null
+        }
+        Insert: {
+          agency?: string | null
+          classification?: string
+          created_at?: string
+          delivery_days?: number | null
+          delivery_place?: string | null
+          dispute_at?: string | null
+          documents_pending?: boolean
+          estimated_profit?: number | null
+          estimated_value?: number | null
+          id?: string
+          notes?: string | null
+          number: string
+          payment_days?: number | null
+          platform?: string | null
+          process_url?: string | null
+          published_at?: string | null
+          realized_profit?: number | null
+          status?: string
+          supplier_confirmed?: boolean
+          traffic_light?: string
+          uasg?: string | null
+          updated_at?: string
+          user_id: string
+          won_value?: number | null
+        }
+        Update: {
+          agency?: string | null
+          classification?: string
+          created_at?: string
+          delivery_days?: number | null
+          delivery_place?: string | null
+          dispute_at?: string | null
+          documents_pending?: boolean
+          estimated_profit?: number | null
+          estimated_value?: number | null
+          id?: string
+          notes?: string | null
+          number?: string
+          payment_days?: number | null
+          platform?: string | null
+          process_url?: string | null
+          published_at?: string | null
+          realized_profit?: number | null
+          status?: string
+          supplier_confirmed?: boolean
+          traffic_light?: string
+          uasg?: string | null
+          updated_at?: string
+          user_id?: string
+          won_value?: number | null
+        }
+        Relationships: []
+      }
+      opportunity_items: {
+        Row: {
+          created_at: string
+          description: string
+          freight: number
+          id: string
+          item_id: string | null
+          opportunity_id: string
+          other_costs: number
+          proposed_price: number
+          quantity: number
+          risk_reserve: number
+          stock_confirmed: boolean
+          supplier_id: string | null
+          taxes: number
+          unit_cost: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          freight?: number
+          id?: string
+          item_id?: string | null
+          opportunity_id: string
+          other_costs?: number
+          proposed_price?: number
+          quantity?: number
+          risk_reserve?: number
+          stock_confirmed?: boolean
+          supplier_id?: string | null
+          taxes?: number
+          unit_cost?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          freight?: number
+          id?: string
+          item_id?: string | null
+          opportunity_id?: string
+          other_costs?: number
+          proposed_price?: number
+          quantity?: number
+          risk_reserve?: number
+          stock_confirmed?: boolean
+          supplier_id?: string | null
+          taxes?: number
+          unit_cost?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opportunity_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunity_items_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunity_items_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          company: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      settings: {
+        Row: {
+          created_at: string
+          default_risk_percent: number
+          default_tax_percent: number
+          good_margin: number
+          min_margin: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          default_risk_percent?: number
+          default_tax_percent?: number
+          good_margin?: number
+          min_margin?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          default_risk_percent?: number
+          default_tax_percent?: number
+          good_margin?: number
+          min_margin?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      suppliers: {
+        Row: {
+          avg_delivery_days: number | null
+          categories: string[]
+          cnpj: string | null
+          contact_name: string | null
+          created_at: string
+          delivers_to_agency: boolean
+          email: string | null
+          had_problems: boolean
+          id: string
+          issues_invoice: boolean
+          legal_name: string
+          notes: string | null
+          rating_aftersales: number
+          rating_deadline: number
+          rating_price: number
+          rating_quality: number
+          rating_response: number
+          real_stock: boolean
+          return_policy: string | null
+          trust_level: string
+          updated_at: string
+          user_id: string
+          website: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          avg_delivery_days?: number | null
+          categories?: string[]
+          cnpj?: string | null
+          contact_name?: string | null
+          created_at?: string
+          delivers_to_agency?: boolean
+          email?: string | null
+          had_problems?: boolean
+          id?: string
+          issues_invoice?: boolean
+          legal_name: string
+          notes?: string | null
+          rating_aftersales?: number
+          rating_deadline?: number
+          rating_price?: number
+          rating_quality?: number
+          rating_response?: number
+          real_stock?: boolean
+          return_policy?: string | null
+          trust_level?: string
+          updated_at?: string
+          user_id: string
+          website?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          avg_delivery_days?: number | null
+          categories?: string[]
+          cnpj?: string | null
+          contact_name?: string | null
+          created_at?: string
+          delivers_to_agency?: boolean
+          email?: string | null
+          had_problems?: boolean
+          id?: string
+          issues_invoice?: boolean
+          legal_name?: string
+          notes?: string | null
+          rating_aftersales?: number
+          rating_deadline?: number
+          rating_price?: number
+          rating_quality?: number
+          rating_response?: number
+          real_stock?: boolean
+          return_policy?: string | null
+          trust_level?: string
+          updated_at?: string
+          user_id?: string
+          website?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
