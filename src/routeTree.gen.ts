@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedEditalRouteImport } from './routes/_authenticated/edital'
 import { Route as AuthenticatedOportunidadesIndexRouteImport } from './routes/_authenticated/oportunidades.index'
 import { Route as AuthenticatedOportunidadesIdRouteImport } from './routes/_authenticated/oportunidades.$id'
 
@@ -35,6 +36,11 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedEditalRoute = AuthenticatedEditalRouteImport.update({
+  id: '/edital',
+  path: '/edital',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedOportunidadesIndexRoute =
   AuthenticatedOportunidadesIndexRouteImport.update({
     id: '/oportunidades/',
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/edital': typeof AuthenticatedEditalRoute
   '/oportunidades/$id': typeof AuthenticatedOportunidadesIdRoute
   '/oportunidades/': typeof AuthenticatedOportunidadesIndexRoute
 }
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/edital': typeof AuthenticatedEditalRoute
   '/oportunidades/$id': typeof AuthenticatedOportunidadesIdRoute
   '/oportunidades': typeof AuthenticatedOportunidadesIndexRoute
 }
@@ -68,21 +76,34 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/edital': typeof AuthenticatedEditalRoute
   '/_authenticated/oportunidades/$id': typeof AuthenticatedOportunidadesIdRoute
   '/_authenticated/oportunidades/': typeof AuthenticatedOportunidadesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/auth' | '/dashboard' | '/oportunidades/$id' | '/oportunidades/'
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/edital'
+    | '/oportunidades/$id'
+    | '/oportunidades/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard' | '/oportunidades/$id' | '/oportunidades'
+  to:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/edital'
+    | '/oportunidades/$id'
+    | '/oportunidades'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/dashboard'
+    | '/_authenticated/edital'
     | '/_authenticated/oportunidades/$id'
     | '/_authenticated/oportunidades/'
   fileRoutesById: FileRoutesById
@@ -123,6 +144,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/edital': {
+      id: '/_authenticated/edital'
+      path: '/edital'
+      fullPath: '/edital'
+      preLoaderRoute: typeof AuthenticatedEditalRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/oportunidades/': {
       id: '/_authenticated/oportunidades/'
       path: '/oportunidades'
@@ -142,12 +170,14 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedEditalRoute: typeof AuthenticatedEditalRoute
   AuthenticatedOportunidadesIdRoute: typeof AuthenticatedOportunidadesIdRoute
   AuthenticatedOportunidadesIndexRoute: typeof AuthenticatedOportunidadesIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedEditalRoute: AuthenticatedEditalRoute,
   AuthenticatedOportunidadesIdRoute: AuthenticatedOportunidadesIdRoute,
   AuthenticatedOportunidadesIndexRoute: AuthenticatedOportunidadesIndexRoute,
 }
