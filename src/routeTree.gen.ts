@@ -12,8 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedCalculadoraRouteImport } from './routes/_authenticated/calculadora'
+import { Route as AuthenticatedConfiguracoesRouteImport } from './routes/_authenticated/configuracoes'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedEditalRouteImport } from './routes/_authenticated/edital'
+import { Route as AuthenticatedFornecedoresRouteImport } from './routes/_authenticated/fornecedores'
 import { Route as AuthenticatedItensRouteImport } from './routes/_authenticated/itens'
 import { Route as AuthenticatedOportunidadesIndexRouteImport } from './routes/_authenticated/oportunidades.index'
 import { Route as AuthenticatedOportunidadesIdRouteImport } from './routes/_authenticated/oportunidades.$id'
@@ -32,6 +35,18 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedCalculadoraRoute =
+  AuthenticatedCalculadoraRouteImport.update({
+    id: '/calculadora',
+    path: '/calculadora',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedConfiguracoesRoute =
+  AuthenticatedConfiguracoesRouteImport.update({
+    id: '/configuracoes',
+    path: '/configuracoes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -42,6 +57,12 @@ const AuthenticatedEditalRoute = AuthenticatedEditalRouteImport.update({
   path: '/edital',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedFornecedoresRoute =
+  AuthenticatedFornecedoresRouteImport.update({
+    id: '/fornecedores',
+    path: '/fornecedores',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedItensRoute = AuthenticatedItensRouteImport.update({
   id: '/itens',
   path: '/itens',
@@ -63,8 +84,11 @@ const AuthenticatedOportunidadesIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/calculadora': typeof AuthenticatedCalculadoraRoute
+  '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/edital': typeof AuthenticatedEditalRoute
+  '/fornecedores': typeof AuthenticatedFornecedoresRoute
   '/itens': typeof AuthenticatedItensRoute
   '/oportunidades/$id': typeof AuthenticatedOportunidadesIdRoute
   '/oportunidades/': typeof AuthenticatedOportunidadesIndexRoute
@@ -72,8 +96,11 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/calculadora': typeof AuthenticatedCalculadoraRoute
+  '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/edital': typeof AuthenticatedEditalRoute
+  '/fornecedores': typeof AuthenticatedFornecedoresRoute
   '/itens': typeof AuthenticatedItensRoute
   '/oportunidades/$id': typeof AuthenticatedOportunidadesIdRoute
   '/oportunidades': typeof AuthenticatedOportunidadesIndexRoute
@@ -83,8 +110,11 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/calculadora': typeof AuthenticatedCalculadoraRoute
+  '/_authenticated/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/edital': typeof AuthenticatedEditalRoute
+  '/_authenticated/fornecedores': typeof AuthenticatedFornecedoresRoute
   '/_authenticated/itens': typeof AuthenticatedItensRoute
   '/_authenticated/oportunidades/$id': typeof AuthenticatedOportunidadesIdRoute
   '/_authenticated/oportunidades/': typeof AuthenticatedOportunidadesIndexRoute
@@ -94,8 +124,11 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/calculadora'
+    | '/configuracoes'
     | '/dashboard'
     | '/edital'
+    | '/fornecedores'
     | '/itens'
     | '/oportunidades/$id'
     | '/oportunidades/'
@@ -103,8 +136,11 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/calculadora'
+    | '/configuracoes'
     | '/dashboard'
     | '/edital'
+    | '/fornecedores'
     | '/itens'
     | '/oportunidades/$id'
     | '/oportunidades'
@@ -113,8 +149,11 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/calculadora'
+    | '/_authenticated/configuracoes'
     | '/_authenticated/dashboard'
     | '/_authenticated/edital'
+    | '/_authenticated/fornecedores'
     | '/_authenticated/itens'
     | '/_authenticated/oportunidades/$id'
     | '/_authenticated/oportunidades/'
@@ -149,6 +188,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/calculadora': {
+      id: '/_authenticated/calculadora'
+      path: '/calculadora'
+      fullPath: '/calculadora'
+      preLoaderRoute: typeof AuthenticatedCalculadoraRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/configuracoes': {
+      id: '/_authenticated/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof AuthenticatedConfiguracoesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -161,6 +214,13 @@ declare module '@tanstack/react-router' {
       path: '/edital'
       fullPath: '/edital'
       preLoaderRoute: typeof AuthenticatedEditalRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/fornecedores': {
+      id: '/_authenticated/fornecedores'
+      path: '/fornecedores'
+      fullPath: '/fornecedores'
+      preLoaderRoute: typeof AuthenticatedFornecedoresRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/itens': {
@@ -188,16 +248,22 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedCalculadoraRoute: typeof AuthenticatedCalculadoraRoute
+  AuthenticatedConfiguracoesRoute: typeof AuthenticatedConfiguracoesRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEditalRoute: typeof AuthenticatedEditalRoute
+  AuthenticatedFornecedoresRoute: typeof AuthenticatedFornecedoresRoute
   AuthenticatedItensRoute: typeof AuthenticatedItensRoute
   AuthenticatedOportunidadesIdRoute: typeof AuthenticatedOportunidadesIdRoute
   AuthenticatedOportunidadesIndexRoute: typeof AuthenticatedOportunidadesIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedCalculadoraRoute: AuthenticatedCalculadoraRoute,
+  AuthenticatedConfiguracoesRoute: AuthenticatedConfiguracoesRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEditalRoute: AuthenticatedEditalRoute,
+  AuthenticatedFornecedoresRoute: AuthenticatedFornecedoresRoute,
   AuthenticatedItensRoute: AuthenticatedItensRoute,
   AuthenticatedOportunidadesIdRoute: AuthenticatedOportunidadesIdRoute,
   AuthenticatedOportunidadesIndexRoute: AuthenticatedOportunidadesIndexRoute,
