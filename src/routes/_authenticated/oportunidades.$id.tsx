@@ -244,7 +244,32 @@ function OpportunityDetail() {
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-6">
           <section className="panel p-5">
-            <h2 className="text-base font-semibold">Dados do processo</h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-base font-semibold">Dados do processo</h2>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  setOppForm({
+                    number: opp.number ?? "",
+                    agency: opp.agency ?? "",
+                    uasg: opp.uasg ?? "",
+                    platform: opp.platform ?? "",
+                    process_url: opp.process_url ?? "",
+                    published_at: opp.published_at ?? "",
+                    dispute_at: opp.dispute_at ? new Date(opp.dispute_at).toISOString().slice(0, 16) : "",
+                    delivery_place: opp.delivery_place ?? "",
+                    delivery_days: opp.delivery_days != null ? String(opp.delivery_days) : "",
+                    payment_days: opp.payment_days != null ? String(opp.payment_days) : "",
+                    classification: opp.classification ?? "outros",
+                    estimated_value: opp.estimated_value != null ? String(opp.estimated_value) : "",
+                    notes: opp.notes ?? "",
+                  })
+                }
+              >
+                <Pencil className="size-4" /> Editar
+              </Button>
+            </div>
             <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
               <Info label="UASG" value={opp.uasg ?? "—"} />
               <Info label="Plataforma" value={opp.platform ?? "—"} />
