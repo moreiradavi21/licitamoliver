@@ -79,6 +79,27 @@ function EditalPage() {
     },
   });
 
+  const linkAnalysis = useMutation({
+    mutationFn: async (value: string) => {
+      if (!result) throw new Error("Nenhuma análise selecionada");
+      const next = value === "none" ? null : value;
+      const { error } = await supabase
+        .from("document_analyses")
+        .update({ opportunity_id: next })
+        .eq("id", result.id);
+      if (error) throw error;
+      return next;
+    },
+    onSuccess: (next) => {
+      setResult((r) => (r ? { ...r, opportunity_id: next } : r));
+      setOpportunityId(next ?? "none");
+      toast.success(next ? "Análise vinculada à oportunidade" : "Vínculo removido");
+      qc.invalidateQueries({ queryKey: ["analyses"] });
+      qc.invalidateQueries({ queryKey: ["opportunity"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const submit = async () => {
     if (!file) return toast.error("Selecione um arquivo PDF ou imagem");
     if (file.size > 12 * 1024 * 1024) return toast.error("Arquivo muito grande (máx. 12 MB)");
