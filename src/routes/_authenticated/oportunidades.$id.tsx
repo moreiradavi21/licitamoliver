@@ -165,6 +165,31 @@ function OpportunityDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const importItems = useMutation({
+    mutationFn: async (rows: Record<string, unknown>[]) => {
+      if (!userId) throw new Error("Sessão expirada");
+      const num = (v: unknown) => {
+        const n = Number(String(v ?? "").replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", "."));
+        return Number.isFinite(n) ? n : 0;
+      };
+      const payload = rows.map((r) => ({
+        user_id: userId,
+        opportunity_id: id,
+        description: String(r["descricao"] ?? "Item").slice(0, 500),
+        quantity: num(r["quantidade"]) || 1,
+        unit_cost: num(r["valor_unitario_estimado"]),
+        proposed_price: num(r["valor_unitario_estimado"]),
+      }));
+      const { error } = await supabase.from("opportunity_items").insert(payload);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Itens importados da análise");
+      qc.invalidateQueries({ queryKey: ["opportunity", id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const saveOpp = useMutation({
     mutationFn: async () => {
       if (!oppForm) return;
