@@ -175,6 +175,32 @@ function EditalPage() {
               <div className="panel p-5">
                 <h2 className="text-base font-semibold">Resumo</h2>
                 <p className="mt-2 text-sm text-muted-foreground">{shown.summary || "—"}</p>
+                <div className="mt-4 grid gap-2 border-t border-border pt-4 sm:grid-cols-[1fr_auto] sm:items-end">
+                  <div className="space-y-1.5">
+                    <Label>Vincular esta análise a uma oportunidade</Label>
+                    <Select
+                      value={shown.opportunity_id ?? "none"}
+                      onValueChange={(v) => linkAnalysis.mutate(v)}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Não vinculada</SelectItem>
+                        {opportunities.map((o) => (
+                          <SelectItem key={o.id} value={o.id}>
+                            {o.number} — {o.agency ?? "sem órgão"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {shown.opportunity_id && (
+                    <Button variant="outline" asChild>
+                      <Link to="/oportunidades/$id" params={{ id: shown.opportunity_id }}>
+                        Ver oportunidade
+                      </Link>
+                    </Button>
+                  )}
+                </div>
               </div>
 
               <div className="panel p-5">
