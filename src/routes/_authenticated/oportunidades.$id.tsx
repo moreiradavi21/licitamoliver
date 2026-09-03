@@ -10,9 +10,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   brl,
+  CLASSIFICATIONS,
   computeCost,
   dateBR,
   dateTimeBR,
@@ -24,7 +32,7 @@ import {
   type StatusKey,
   type TrafficKey,
 } from "@/lib/domain";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/oportunidades/$id")({
   head: () => ({
@@ -57,6 +65,8 @@ function OpportunityDetail() {
   const userId = useUserId();
   const { minMargin, goodMargin } = useSettings();
   const [itemForm, setItemForm] = useState(emptyItem);
+  const [editItem, setEditItem] = useState<(typeof emptyItem & { id: string }) | null>(null);
+  const [oppForm, setOppForm] = useState<Record<string, string> | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["opportunity", id],
@@ -79,7 +89,7 @@ function OpportunityDetail() {
 
   const update = useMutation({
     mutationFn: async (patch: Record<string, unknown>) => {
-      const { error } = await supabase.from("opportunities").update(patch).eq("id", id);
+      const { error } = await supabase.from("opportunities").update(patch as never).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -126,6 +136,95 @@ function OpportunityDetail() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["opportunity", id] }),
   });
 
+  const saveItem = useMutation({
+    mutationFn: async () => {
+      if (!editItem) return;
+      if (!editItem.description.trim()) throw new Error("Descreva o item");
+      const { error } = await supabase
+        .from("opportunity_items")
+        .update({
+          description: editItem.description.trim(),
+          quantity: Number(editItem.quantity) || 1,
+          unit_cost: Number(editItem.unit_cost) || 0,
+          freight: Number(editItem.freight) || 0,
+          taxes: Number(editItem.taxes) || 0,
+          other_costs: Number(editItem.other_costs) || 0,
+          risk_reserve: Number(editItem.risk_reserve) || 0,
+          proposed_price: Number(editItem.proposed_price) || 0,
+          supplier_id: editItem.supplier_id === "none" ? null : editItem.supplier_id,
+          stock_confirmed: editItem.stock_confirmed,
+        })
+        .eq("id", editItem.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setEditItem(null);
+      toast.success("Item atualizado");
+      qc.invalidateQueries({ queryKey: ["opportunity", id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const importItems = useMutation({
+    mutationFn: async (rows: Record<string, unknown>[]) => {
+      if (!userId) throw new Error("Sessão expirada");
+      const num = (v: unknown) => {
+        const n = Number(String(v ?? "").replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", "."));
+        return Number.isFinite(n) ? n : 0;
+      };
+      const payload = rows.map((r) => ({
+        user_id: userId,
+        opportunity_id: id,
+        description: String(r["descricao"] ?? "Item").slice(0, 500),
+        quantity: num(r["quantidade"]) || 1,
+        unit_cost: num(r["valor_unitario_estimado"]),
+        proposed_price: num(r["valor_unitario_estimado"]),
+      }));
+      const { error } = await supabase.from("opportunity_items").insert(payload);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Itens importados da análise");
+      qc.invalidateQueries({ queryKey: ["opportunity", id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const saveOpp = useMutation({
+    mutationFn: async () => {
+      if (!oppForm) return;
+      if (!oppForm["number"]?.trim()) throw new Error("Informe o número da dispensa");
+      const { error } = await supabase
+        .from("opportunities")
+        .update({
+          number: oppForm["number"].trim(),
+          agency: oppForm["agency"] || null,
+          uasg: oppForm["uasg"] || null,
+          platform: oppForm["platform"] || null,
+          process_url: oppForm["process_url"] || null,
+          published_at: oppForm["published_at"] || null,
+          dispute_at: oppForm["dispute_at"] ? new Date(oppForm["dispute_at"]).toISOString() : null,
+          delivery_place: oppForm["delivery_place"] || null,
+          delivery_days: oppForm["delivery_days"] ? Number(oppForm["delivery_days"]) : null,
+          payment_days: oppForm["payment_days"] ? Number(oppForm["payment_days"]) : null,
+          classification: oppForm["classification"] || "outros",
+          estimated_value: oppForm["estimated_value"] ? Number(oppForm["estimated_value"]) : null,
+          notes: oppForm["notes"] || null,
+        })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setOppForm(null);
+      toast.success("Dados do processo atualizados");
+      qc.invalidateQueries({ queryKey: ["opportunity", id] });
+      qc.invalidateQueries({ queryKey: ["opportunities"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
   if (isLoading) return <p className="text-muted-foreground">Carregando…</p>;
   const opp = data?.opp;
   if (!opp) return <p className="text-muted-foreground">Oportunidade não encontrada.</p>;
@@ -170,7 +269,32 @@ function OpportunityDetail() {
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-6">
           <section className="panel p-5">
-            <h2 className="text-base font-semibold">Dados do processo</h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-base font-semibold">Dados do processo</h2>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  setOppForm({
+                    number: opp.number ?? "",
+                    agency: opp.agency ?? "",
+                    uasg: opp.uasg ?? "",
+                    platform: opp.platform ?? "",
+                    process_url: opp.process_url ?? "",
+                    published_at: opp.published_at ?? "",
+                    dispute_at: opp.dispute_at ? new Date(opp.dispute_at).toISOString().slice(0, 16) : "",
+                    delivery_place: opp.delivery_place ?? "",
+                    delivery_days: opp.delivery_days != null ? String(opp.delivery_days) : "",
+                    payment_days: opp.payment_days != null ? String(opp.payment_days) : "",
+                    classification: opp.classification ?? "outros",
+                    estimated_value: opp.estimated_value != null ? String(opp.estimated_value) : "",
+                    notes: opp.notes ?? "",
+                  })
+                }
+              >
+                <Pencil className="size-4" /> Editar
+              </Button>
+            </div>
             <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
               <Info label="UASG" value={opp.uasg ?? "—"} />
               <Info label="Plataforma" value={opp.platform ?? "—"} />
@@ -238,7 +362,28 @@ function OpportunityDetail() {
                         <td className="p-2">{brl(Number(it.proposed_price))}</td>
                         <td className={`p-2 ${TRAFFIC[v.key].className}`}>{pct(r.margin)}</td>
                         <td className="p-2">{it.stock_confirmed ? "✅" : "⚠️"}</td>
-                        <td className="p-2">
+                        <td className="p-2 whitespace-nowrap">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() =>
+                              setEditItem({
+                                id: it.id,
+                                description: it.description,
+                                quantity: String(it.quantity),
+                                unit_cost: String(it.unit_cost),
+                                freight: String(it.freight),
+                                taxes: String(it.taxes),
+                                other_costs: String(it.other_costs),
+                                risk_reserve: String(it.risk_reserve),
+                                proposed_price: String(it.proposed_price),
+                                supplier_id: it.supplier_id ?? "none",
+                                stock_confirmed: it.stock_confirmed,
+                              })
+                            }
+                          >
+                            <Pencil className="size-4" />
+                          </Button>
                           <Button size="icon" variant="ghost" onClick={() => removeItem.mutate(it.id)}>
                             <Trash2 className="size-4" />
                           </Button>
@@ -284,12 +429,34 @@ function OpportunityDetail() {
           {(data?.analyses ?? []).length > 0 && (
             <section className="panel p-5">
               <h2 className="text-base font-semibold">Análises de edital vinculadas</h2>
-              {(data?.analyses ?? []).map((a) => (
-                <div key={a.id} className="mt-3 rounded-md border border-border p-3 text-sm">
-                  <p className="font-medium">{a.file_name}</p>
-                  <p className="mt-1 text-muted-foreground">{a.summary}</p>
-                </div>
-              ))}
+              {(data?.analyses ?? []).map((a) => {
+                const ex = (a.extracted ?? {}) as Record<string, unknown>;
+                const exItems = Array.isArray(ex["itens"]) ? (ex["itens"] as Record<string, unknown>[]) : [];
+                const list = (v: unknown) => (Array.isArray(v) ? v.map((x) => String(x)) : []);
+                return (
+                  <div key={a.id} className="mt-3 space-y-2 rounded-md border border-border p-3 text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-medium">{a.file_name}</p>
+                      {exItems.length > 0 && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={importItems.isPending}
+                          onClick={() => importItems.mutate(exItems)}
+                        >
+                          Importar {exItems.length} itens
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-muted-foreground">{a.summary}</p>
+                    {list(a.attention).length > 0 && (
+                      <ul className="list-disc pl-5 text-xs text-warning">
+                        {list(a.attention).map((t, i) => <li key={i}>{t}</li>)}
+                      </ul>
+                    )}
+                  </div>
+                );
+              })}
             </section>
           )}
         </div>
@@ -371,6 +538,129 @@ function OpportunityDetail() {
           </section>
         </aside>
       </div>
+
+      <Dialog open={!!oppForm} onOpenChange={(o) => !o && setOppForm(null)}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Editar dados do processo</DialogTitle>
+          </DialogHeader>
+          {oppForm && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {(
+                [
+                  ["number", "Número da dispensa *", "text"],
+                  ["agency", "Órgão", "text"],
+                  ["uasg", "UASG", "text"],
+                  ["platform", "Plataforma", "text"],
+                  ["process_url", "Link do processo", "text"],
+                  ["published_at", "Data de publicação", "date"],
+                  ["dispute_at", "Data/hora da disputa", "datetime-local"],
+                  ["delivery_place", "Local de entrega", "text"],
+                  ["delivery_days", "Prazo de entrega (dias)", "number"],
+                  ["payment_days", "Prazo de pagamento (dias)", "number"],
+                  ["estimated_value", "Valor estimado (R$)", "number"],
+                ] as const
+              ).map(([key, label, type]) => (
+                <FieldText
+                  key={key}
+                  label={label}
+                  type={type}
+                  value={oppForm[key] ?? ""}
+                  onChange={(v) => setOppForm((f) => ({ ...(f ?? {}), [key]: v }))}
+                />
+              ))}
+              <div className="space-y-1.5">
+                <Label>Classificação</Label>
+                <Select
+                  value={oppForm["classification"] ?? "outros"}
+                  onValueChange={(v) => setOppForm((f) => ({ ...(f ?? {}), classification: v }))}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {CLASSIFICATIONS.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Observações</Label>
+                <Textarea
+                  value={oppForm["notes"] ?? ""}
+                  onChange={(e) => setOppForm((f) => ({ ...(f ?? {}), notes: e.target.value }))}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOppForm(null)}>Cancelar</Button>
+            <Button disabled={saveOpp.isPending} onClick={() => saveOpp.mutate()}>Salvar alterações</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editItem} onOpenChange={(o) => !o && setEditItem(null)}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Editar item</DialogTitle>
+          </DialogHeader>
+          {editItem && (
+            <div className="grid gap-4 sm:grid-cols-3">
+              <FieldText
+                label="Descrição do item"
+                className="sm:col-span-3"
+                value={editItem.description}
+                onChange={(v) => setEditItem((f) => (f ? { ...f, description: v } : f))}
+              />
+              {(
+                [
+                  ["quantity", "Quantidade"],
+                  ["unit_cost", "Custo unitário"],
+                  ["freight", "Frete"],
+                  ["taxes", "Impostos"],
+                  ["other_costs", "Outros custos"],
+                  ["risk_reserve", "Reserva de risco"],
+                  ["proposed_price", "Preço proposto (unit.)"],
+                ] as const
+              ).map(([key, label]) => (
+                <FieldText
+                  key={key}
+                  label={label}
+                  type="number"
+                  value={editItem[key]}
+                  onChange={(v) => setEditItem((f) => (f ? { ...f, [key]: v } : f))}
+                />
+              ))}
+              <div className="space-y-1.5">
+                <Label>Fornecedor</Label>
+                <Select
+                  value={editItem.supplier_id}
+                  onValueChange={(v) => setEditItem((f) => (f ? { ...f, supplier_id: v } : f))}
+                >
+                  <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem fornecedor</SelectItem>
+                    {(data?.suppliers ?? []).map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.legal_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end gap-2">
+                <Switch
+                  checked={editItem.stock_confirmed}
+                  onCheckedChange={(v) => setEditItem((f) => (f ? { ...f, stock_confirmed: v } : f))}
+                />
+                <span className="text-sm">Estoque confirmado</span>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditItem(null)}>Cancelar</Button>
+            <Button disabled={saveItem.isPending} onClick={() => saveItem.mutate()}>Salvar item</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +27,7 @@ export const Route = createFileRoute("/_authenticated/edital")({
 
 type Analysis = {
   id: string;
+  opportunity_id: string | null;
   file_name: string;
   summary: string | null;
   favorable: unknown;
@@ -78,9 +79,36 @@ function EditalPage() {
     },
   });
 
+  const linkAnalysis = useMutation({
+    mutationFn: async (value: string) => {
+      if (!result) throw new Error("Nenhuma análise selecionada");
+      const next = value === "none" ? null : value;
+      const { error } = await supabase
+        .from("document_analyses")
+        .update({ opportunity_id: next })
+        .eq("id", result.id);
+      if (error) throw error;
+      return next;
+    },
+    onSuccess: (next) => {
+      setResult((r) => (r ? { ...r, opportunity_id: next } : r));
+      setOpportunityId(next ?? "none");
+      toast.success(next ? "Análise vinculada à oportunidade" : "Vínculo removido");
+      qc.invalidateQueries({ queryKey: ["analyses"] });
+      qc.invalidateQueries({ queryKey: ["opportunity"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const submit = async () => {
-    if (!file) return toast.error("Selecione um arquivo PDF ou imagem");
-    if (file.size > 12 * 1024 * 1024) return toast.error("Arquivo muito grande (máx. 12 MB)");
+    if (!file) {
+      toast.error("Selecione um arquivo PDF ou imagem");
+      return;
+    }
+    if (file.size > 12 * 1024 * 1024) {
+      toast.error("Arquivo muito grande (máx. 12 MB)");
+      return;
+    }
     setLoading(true);
     try {
       const buffer = await file.arrayBuffer();
@@ -175,6 +203,32 @@ function EditalPage() {
               <div className="panel p-5">
                 <h2 className="text-base font-semibold">Resumo</h2>
                 <p className="mt-2 text-sm text-muted-foreground">{shown.summary || "—"}</p>
+                <div className="mt-4 grid gap-2 border-t border-border pt-4 sm:grid-cols-[1fr_auto] sm:items-end">
+                  <div className="space-y-1.5">
+                    <Label>Vincular esta análise a uma oportunidade</Label>
+                    <Select
+                      value={shown.opportunity_id ?? "none"}
+                      onValueChange={(v) => linkAnalysis.mutate(v)}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Não vinculada</SelectItem>
+                        {opportunities.map((o) => (
+                          <SelectItem key={o.id} value={o.id}>
+                            {o.number} — {o.agency ?? "sem órgão"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {shown.opportunity_id && (
+                    <Button variant="outline" asChild>
+                      <Link to="/oportunidades/$id" params={{ id: shown.opportunity_id }}>
+                        Ver oportunidade
+                      </Link>
+                    </Button>
+                  )}
+                </div>
               </div>
 
               <div className="panel p-5">
