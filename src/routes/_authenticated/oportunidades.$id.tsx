@@ -491,6 +491,129 @@ function OpportunityDetail() {
           </section>
         </aside>
       </div>
+
+      <Dialog open={!!oppForm} onOpenChange={(o) => !o && setOppForm(null)}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Editar dados do processo</DialogTitle>
+          </DialogHeader>
+          {oppForm && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {(
+                [
+                  ["number", "Número da dispensa *", "text"],
+                  ["agency", "Órgão", "text"],
+                  ["uasg", "UASG", "text"],
+                  ["platform", "Plataforma", "text"],
+                  ["process_url", "Link do processo", "text"],
+                  ["published_at", "Data de publicação", "date"],
+                  ["dispute_at", "Data/hora da disputa", "datetime-local"],
+                  ["delivery_place", "Local de entrega", "text"],
+                  ["delivery_days", "Prazo de entrega (dias)", "number"],
+                  ["payment_days", "Prazo de pagamento (dias)", "number"],
+                  ["estimated_value", "Valor estimado (R$)", "number"],
+                ] as const
+              ).map(([key, label, type]) => (
+                <FieldText
+                  key={key}
+                  label={label}
+                  type={type}
+                  value={oppForm[key] ?? ""}
+                  onChange={(v) => setOppForm((f) => ({ ...(f ?? {}), [key]: v }))}
+                />
+              ))}
+              <div className="space-y-1.5">
+                <Label>Classificação</Label>
+                <Select
+                  value={oppForm["classification"] ?? "outros"}
+                  onValueChange={(v) => setOppForm((f) => ({ ...(f ?? {}), classification: v }))}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {CLASSIFICATIONS.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Observações</Label>
+                <Textarea
+                  value={oppForm["notes"] ?? ""}
+                  onChange={(e) => setOppForm((f) => ({ ...(f ?? {}), notes: e.target.value }))}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOppForm(null)}>Cancelar</Button>
+            <Button disabled={saveOpp.isPending} onClick={() => saveOpp.mutate()}>Salvar alterações</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editItem} onOpenChange={(o) => !o && setEditItem(null)}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Editar item</DialogTitle>
+          </DialogHeader>
+          {editItem && (
+            <div className="grid gap-4 sm:grid-cols-3">
+              <FieldText
+                label="Descrição do item"
+                className="sm:col-span-3"
+                value={editItem.description}
+                onChange={(v) => setEditItem((f) => (f ? { ...f, description: v } : f))}
+              />
+              {(
+                [
+                  ["quantity", "Quantidade"],
+                  ["unit_cost", "Custo unitário"],
+                  ["freight", "Frete"],
+                  ["taxes", "Impostos"],
+                  ["other_costs", "Outros custos"],
+                  ["risk_reserve", "Reserva de risco"],
+                  ["proposed_price", "Preço proposto (unit.)"],
+                ] as const
+              ).map(([key, label]) => (
+                <FieldText
+                  key={key}
+                  label={label}
+                  type="number"
+                  value={editItem[key]}
+                  onChange={(v) => setEditItem((f) => (f ? { ...f, [key]: v } : f))}
+                />
+              ))}
+              <div className="space-y-1.5">
+                <Label>Fornecedor</Label>
+                <Select
+                  value={editItem.supplier_id}
+                  onValueChange={(v) => setEditItem((f) => (f ? { ...f, supplier_id: v } : f))}
+                >
+                  <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem fornecedor</SelectItem>
+                    {(data?.suppliers ?? []).map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.legal_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end gap-2">
+                <Switch
+                  checked={editItem.stock_confirmed}
+                  onCheckedChange={(v) => setEditItem((f) => (f ? { ...f, stock_confirmed: v } : f))}
+                />
+                <span className="text-sm">Estoque confirmado</span>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditItem(null)}>Cancelar</Button>
+            <Button disabled={saveItem.isPending} onClick={() => saveItem.mutate()}>Salvar item</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
