@@ -136,6 +136,70 @@ function OpportunityDetail() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["opportunity", id] }),
   });
 
+  const saveItem = useMutation({
+    mutationFn: async () => {
+      if (!editItem) return;
+      if (!editItem.description.trim()) throw new Error("Descreva o item");
+      const { error } = await supabase
+        .from("opportunity_items")
+        .update({
+          description: editItem.description.trim(),
+          quantity: Number(editItem.quantity) || 1,
+          unit_cost: Number(editItem.unit_cost) || 0,
+          freight: Number(editItem.freight) || 0,
+          taxes: Number(editItem.taxes) || 0,
+          other_costs: Number(editItem.other_costs) || 0,
+          risk_reserve: Number(editItem.risk_reserve) || 0,
+          proposed_price: Number(editItem.proposed_price) || 0,
+          supplier_id: editItem.supplier_id === "none" ? null : editItem.supplier_id,
+          stock_confirmed: editItem.stock_confirmed,
+        })
+        .eq("id", editItem.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setEditItem(null);
+      toast.success("Item atualizado");
+      qc.invalidateQueries({ queryKey: ["opportunity", id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const saveOpp = useMutation({
+    mutationFn: async () => {
+      if (!oppForm) return;
+      if (!oppForm["number"]?.trim()) throw new Error("Informe o número da dispensa");
+      const { error } = await supabase
+        .from("opportunities")
+        .update({
+          number: oppForm["number"].trim(),
+          agency: oppForm["agency"] || null,
+          uasg: oppForm["uasg"] || null,
+          platform: oppForm["platform"] || null,
+          process_url: oppForm["process_url"] || null,
+          published_at: oppForm["published_at"] || null,
+          dispute_at: oppForm["dispute_at"] ? new Date(oppForm["dispute_at"]).toISOString() : null,
+          delivery_place: oppForm["delivery_place"] || null,
+          delivery_days: oppForm["delivery_days"] ? Number(oppForm["delivery_days"]) : null,
+          payment_days: oppForm["payment_days"] ? Number(oppForm["payment_days"]) : null,
+          classification: oppForm["classification"] || "outros",
+          estimated_value: oppForm["estimated_value"] ? Number(oppForm["estimated_value"]) : null,
+          notes: oppForm["notes"] || null,
+        })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setOppForm(null);
+      toast.success("Dados do processo atualizados");
+      qc.invalidateQueries({ queryKey: ["opportunity", id] });
+      qc.invalidateQueries({ queryKey: ["opportunities"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
   if (isLoading) return <p className="text-muted-foreground">Carregando…</p>;
   const opp = data?.opp;
   if (!opp) return <p className="text-muted-foreground">Oportunidade não encontrada.</p>;
