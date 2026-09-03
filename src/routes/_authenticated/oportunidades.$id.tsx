@@ -10,9 +10,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   brl,
+  CLASSIFICATIONS,
   computeCost,
   dateBR,
   dateTimeBR,
@@ -24,7 +32,7 @@ import {
   type StatusKey,
   type TrafficKey,
 } from "@/lib/domain";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/oportunidades/$id")({
   head: () => ({
