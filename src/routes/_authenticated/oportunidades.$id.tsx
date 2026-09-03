@@ -337,7 +337,28 @@ function OpportunityDetail() {
                         <td className="p-2">{brl(Number(it.proposed_price))}</td>
                         <td className={`p-2 ${TRAFFIC[v.key].className}`}>{pct(r.margin)}</td>
                         <td className="p-2">{it.stock_confirmed ? "✅" : "⚠️"}</td>
-                        <td className="p-2">
+                        <td className="p-2 whitespace-nowrap">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() =>
+                              setEditItem({
+                                id: it.id,
+                                description: it.description,
+                                quantity: String(it.quantity),
+                                unit_cost: String(it.unit_cost),
+                                freight: String(it.freight),
+                                taxes: String(it.taxes),
+                                other_costs: String(it.other_costs),
+                                risk_reserve: String(it.risk_reserve),
+                                proposed_price: String(it.proposed_price),
+                                supplier_id: it.supplier_id ?? "none",
+                                stock_confirmed: it.stock_confirmed,
+                              })
+                            }
+                          >
+                            <Pencil className="size-4" />
+                          </Button>
                           <Button size="icon" variant="ghost" onClick={() => removeItem.mutate(it.id)}>
                             <Trash2 className="size-4" />
                           </Button>
