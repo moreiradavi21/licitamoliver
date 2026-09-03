@@ -404,12 +404,34 @@ function OpportunityDetail() {
           {(data?.analyses ?? []).length > 0 && (
             <section className="panel p-5">
               <h2 className="text-base font-semibold">Análises de edital vinculadas</h2>
-              {(data?.analyses ?? []).map((a) => (
-                <div key={a.id} className="mt-3 rounded-md border border-border p-3 text-sm">
-                  <p className="font-medium">{a.file_name}</p>
-                  <p className="mt-1 text-muted-foreground">{a.summary}</p>
-                </div>
-              ))}
+              {(data?.analyses ?? []).map((a) => {
+                const ex = (a.extracted ?? {}) as Record<string, unknown>;
+                const exItems = Array.isArray(ex["itens"]) ? (ex["itens"] as Record<string, unknown>[]) : [];
+                const list = (v: unknown) => (Array.isArray(v) ? v.map((x) => String(x)) : []);
+                return (
+                  <div key={a.id} className="mt-3 space-y-2 rounded-md border border-border p-3 text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-medium">{a.file_name}</p>
+                      {exItems.length > 0 && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={importItems.isPending}
+                          onClick={() => importItems.mutate(exItems)}
+                        >
+                          Importar {exItems.length} itens
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-muted-foreground">{a.summary}</p>
+                    {list(a.attention).length > 0 && (
+                      <ul className="list-disc pl-5 text-xs text-warning">
+                        {list(a.attention).map((t, i) => <li key={i}>{t}</li>)}
+                      </ul>
+                    )}
+                  </div>
+                );
+              })}
             </section>
           )}
         </div>
