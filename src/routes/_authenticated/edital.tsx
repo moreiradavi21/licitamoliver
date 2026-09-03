@@ -101,8 +101,14 @@ function EditalPage() {
   });
 
   const submit = async () => {
-    if (!file) return toast.error("Selecione um arquivo PDF ou imagem");
-    if (file.size > 12 * 1024 * 1024) return toast.error("Arquivo muito grande (máx. 12 MB)");
+    if (!file) {
+      toast.error("Selecione um arquivo PDF ou imagem");
+      return;
+    }
+    if (file.size > 12 * 1024 * 1024) {
+      toast.error("Arquivo muito grande (máx. 12 MB)");
+      return;
+    }
     setLoading(true);
     try {
       const buffer = await file.arrayBuffer();

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Json } from "@/integrations/supabase/types";
 
 const inputSchema = z.object({
   fileName: z.string().min(1).max(255),
@@ -99,10 +100,10 @@ export const analyzeEdital = createServerFn({ method: "POST" })
       opportunity_id: data.opportunityId ?? null,
       file_name: data.fileName,
       summary: String(parsed["resumo"] ?? ""),
-      favorable: parsed["favoraveis"] ?? [],
-      attention: parsed["atencao"] ?? [],
-      risks: parsed["riscos"] ?? [],
-      extracted: parsed["extraido"] ?? {},
+      favorable: (parsed["favoraveis"] ?? []) as Json,
+      attention: (parsed["atencao"] ?? []) as Json,
+      risks: (parsed["riscos"] ?? []) as Json,
+      extracted: (parsed["extraido"] ?? {}) as Json,
     };
 
     const { data: saved, error } = await context.supabase
