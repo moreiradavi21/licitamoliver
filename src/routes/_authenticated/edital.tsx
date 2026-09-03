@@ -27,6 +27,7 @@ export const Route = createFileRoute("/_authenticated/edital")({
 
 type Analysis = {
   id: string;
+  opportunity_id: string | null;
   file_name: string;
   summary: string | null;
   favorable: unknown;
