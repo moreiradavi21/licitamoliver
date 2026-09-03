@@ -65,6 +65,8 @@ function OpportunityDetail() {
   const userId = useUserId();
   const { minMargin, goodMargin } = useSettings();
   const [itemForm, setItemForm] = useState(emptyItem);
+  const [editItem, setEditItem] = useState<(typeof emptyItem & { id: string }) | null>(null);
+  const [oppForm, setOppForm] = useState<Record<string, string> | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["opportunity", id],
