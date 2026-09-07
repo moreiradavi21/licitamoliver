@@ -38,7 +38,10 @@ function computeBid(i: CalcInput) {
   const riskValue = (realUnitCost * (i.riskPct || 0)) / 100;
   const adjustedUnitCost = realUnitCost + taxValue + riskValue;
   const minPrice = adjustedUnitCost;
-  const recommendedPrice = adjustedUnitCost * (1 + (i.targetMargin || 0) / 100);
+  // Margem-alvo sobre o preço de venda: preço = custo / (1 - margem)
+  // Assim, lucro / preço = margem exata informada (ex.: 30%).
+  const marginRate = Math.min(Math.max((i.targetMargin || 0) / 100, 0), 0.99);
+  const recommendedPrice = adjustedUnitCost / (1 - marginRate);
   const grossProfitUnit = recommendedPrice - adjustedUnitCost;
   const totalProfit = grossProfitUnit * qty;
   const adjustedTotal = adjustedUnitCost * qty;
