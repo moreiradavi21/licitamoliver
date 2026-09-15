@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserId } from "@/hooks/use-user";
+import { analyzeEdital } from "@/lib/edital.functions";
 import { PageHeader } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { brl, CLASSIFICATIONS, dateTimeBR, STATUS, STATUS_ORDER, TRAFFIC, type StatusKey, type TrafficKey } from "@/lib/domain";
-import { Plus } from "lucide-react";
+import { FileSearch, Loader2, Plus } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/oportunidades/")({
   head: () => ({
@@ -50,11 +52,42 @@ const emptyForm = {
   notes: "",
 };
 
+type PendingAnalysis = {
+  id: string;
+  extracted: unknown;
+};
+
+const textValue = (value: unknown) => String(value ?? "").trim();
+
+function numberValue(value: unknown) {
+  const raw = textValue(value).replace(/R\$\s?/gi, "").replace(/\s/g, "");
+  const normalized = raw.includes(",") ? raw.replace(/\./g, "").replace(",", ".") : raw;
+  const match = normalized.match(/-?\d+(?:\.\d+)?/);
+  return match ? match[0] : "";
+}
+
+function dateValue(value: unknown, withTime = false) {
+  const raw = textValue(value);
+  if (!raw) return "";
+  const br = raw.match(/(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?/);
+  if (br) {
+    const date = `${br[3]}-${br[2]}-${br[1]}`;
+    return withTime ? `${date}T${br[4] ?? "00"}:${br[5] ?? "00"}` : date;
+  }
+  const iso = raw.match(/\d{4}-\d{2}-\d{2}(?:[T\s]\d{2}:\d{2})?/);
+  if (!iso) return "";
+  return withTime ? iso[0].replace(" ", "T").slice(0, 16) : iso[0].slice(0, 10);
+}
+
 function Opportunities() {
   const qc = useQueryClient();
   const userId = useUserId();
+  const runAnalysis = useServerFn(analyzeEdital);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [editalFile, setEditalFile] = useState<File | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [pendingAnalysis, setPendingAnalysis] = useState<PendingAnalysis | null>(null);
   const [filter, setFilter] = useState<string>("todos");
   const [search, setSearch] = useState("");
 
@@ -74,7 +107,7 @@ function Opportunities() {
     mutationFn: async () => {
       if (!userId) throw new Error("Sessão expirada");
       if (!form.number.trim()) throw new Error("Informe o número da dispensa");
-      const { error } = await supabase.from("opportunities").insert({
+      const { data: opportunity, error } = await supabase.from("opportunities").insert({
         user_id: userId,
         number: form.number.trim(),
         agency: form.agency || null,
@@ -90,14 +123,44 @@ function Opportunities() {
         status: form.status,
         estimated_value: form.estimated_value ? Number(form.estimated_value) : null,
         notes: form.notes || null,
-      });
+      }).select("id").single();
       if (error) throw error;
+      if (!opportunity) throw new Error("Não foi possível criar a oportunidade");
+
+      if (pendingAnalysis) {
+        const { error: linkError } = await supabase
+          .from("document_analyses")
+          .update({ opportunity_id: opportunity.id })
+          .eq("id", pendingAnalysis.id);
+        if (linkError) throw linkError;
+
+        const extracted = (pendingAnalysis.extracted ?? {}) as Record<string, unknown>;
+        const items = Array.isArray(extracted["itens"])
+          ? (extracted["itens"] as Record<string, unknown>[])
+          : [];
+        if (items.length > 0) {
+          const { error: itemsError } = await supabase.from("opportunity_items").insert(
+            items.map((item) => ({
+              user_id: userId,
+              opportunity_id: opportunity.id,
+              description: textValue(item["descricao"]) || "Item do edital",
+              quantity: Number(numberValue(item["quantidade"]) || 1),
+              unit_cost: 0,
+              proposed_price: Number(numberValue(item["valor_unitario_estimado"]) || 0),
+            })),
+          );
+          if (itemsError) throw itemsError;
+        }
+      }
     },
     onSuccess: () => {
       toast.success("Oportunidade cadastrada");
       setForm(emptyForm);
+      setEditalFile(null);
+      setPendingAnalysis(null);
       setOpen(false);
       qc.invalidateQueries({ queryKey: ["opportunities"] });
+      qc.invalidateQueries({ queryKey: ["analyses"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -110,6 +173,52 @@ function Opportunities() {
   );
 
   const set = (k: keyof typeof emptyForm, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  const analyzeAndFill = async () => {
+    if (!editalFile) {
+      toast.error("Selecione o edital em PDF ou imagem");
+      return;
+    }
+    if (editalFile.size > 12 * 1024 * 1024) {
+      toast.error("Arquivo muito grande (máx. 12 MB)");
+      return;
+    }
+    setAnalyzing(true);
+    try {
+      const bytes = new Uint8Array(await editalFile.arrayBuffer());
+      let binary = "";
+      for (let i = 0; i < bytes.length; i += 8192) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+      }
+      const analysis = (await runAnalysis({
+        data: {
+          fileName: editalFile.name,
+          mimeType: editalFile.type || "application/pdf",
+          fileData: btoa(binary),
+          opportunityId: null,
+        },
+      })) as PendingAnalysis;
+      const extracted = (analysis.extracted ?? {}) as Record<string, unknown>;
+      setForm((current) => ({
+        ...current,
+        number: textValue(extracted["numero_dispensa"]) || current.number,
+        agency: textValue(extracted["orgao"]) || current.agency,
+        uasg: textValue(extracted["uasg"]) || current.uasg,
+        platform: textValue(extracted["plataforma"]) || current.platform,
+        dispute_at: dateValue(extracted["data_disputa"], true) || current.dispute_at,
+        delivery_place: textValue(extracted["local_entrega"]) || current.delivery_place,
+        delivery_days: numberValue(extracted["prazo_entrega"]) || current.delivery_days,
+        payment_days: numberValue(extracted["prazo_pagamento"]) || current.payment_days,
+        estimated_value: numberValue(extracted["valor_estimado"]) || current.estimated_value,
+      }));
+      setPendingAnalysis(analysis);
+      toast.success("Edital lido e informações preenchidas");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Falha ao analisar o edital");
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
   return (
     <>
@@ -127,6 +236,40 @@ function Opportunities() {
               <DialogHeader>
                 <DialogTitle>Nova oportunidade</DialogTitle>
               </DialogHeader>
+              <div className="space-y-3 rounded-md border border-border bg-muted/30 p-4">
+                <div>
+                  <Label htmlFor="new-opportunity-edital">Preencher pelo edital</Label>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Selecione o PDF ou imagem para preencher os dados e itens automaticamente.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Input
+                    id="new-opportunity-edital"
+                    type="file"
+                    accept="application/pdf,image/*"
+                    disabled={analyzing}
+                    onChange={(event) => {
+                      setEditalFile(event.target.files?.[0] ?? null);
+                      setPendingAnalysis(null);
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={analyzing || !editalFile}
+                    onClick={analyzeAndFill}
+                  >
+                    {analyzing ? <Loader2 className="size-4 animate-spin" /> : <FileSearch className="size-4" />}
+                    {analyzing ? "Lendo…" : "Ler e preencher"}
+                  </Button>
+                </div>
+                {pendingAnalysis && (
+                  <p className="text-xs font-medium text-success">
+                    Edital lido. Revise os dados abaixo antes de salvar.
+                  </p>
+                )}
+              </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <F label="Número da dispensa *" value={form.number} onChange={(v) => set("number", v)} />
                 <F label="Órgão" value={form.agency} onChange={(v) => set("agency", v)} />
