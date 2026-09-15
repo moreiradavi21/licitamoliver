@@ -16,7 +16,7 @@ Leia o documento (aviso de contratação direta, termo de referência ou edital)
   "resumo": "string curta",
   "extraido": {
     "numero_dispensa": "", "orgao": "", "uasg": "", "plataforma": "",
-    "data_disputa": "", "valor_estimado": "", "local_entrega": "",
+    "link_processo": "", "data_publicacao": "", "data_disputa": "", "valor_estimado": "", "local_entrega": "",
     "prazo_entrega": "", "prazo_pagamento": "", "garantia": "",
     "criterio_julgamento": "", "documentacao_exigida": ["..."],
     "penalidades": ["..."],

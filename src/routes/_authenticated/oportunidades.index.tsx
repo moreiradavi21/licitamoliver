@@ -205,6 +205,8 @@ function Opportunities() {
         agency: textValue(extracted["orgao"]) || current.agency,
         uasg: textValue(extracted["uasg"]) || current.uasg,
         platform: textValue(extracted["plataforma"]) || current.platform,
+        process_url: textValue(extracted["link_processo"]) || current.process_url,
+        published_at: dateValue(extracted["data_publicacao"]) || current.published_at,
         dispute_at: dateValue(extracted["data_disputa"], true) || current.dispute_at,
         delivery_place: textValue(extracted["local_entrega"]) || current.delivery_place,
         delivery_days: numberValue(extracted["prazo_entrega"]) || current.delivery_days,
