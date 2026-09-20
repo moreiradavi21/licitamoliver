@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useSettings, useUserId } from "@/hooks/use-user";
 import { PageHeader } from "@/components/AppLayout";
+import { NicheFields } from "@/components/NicheFields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +21,6 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   brl,
-  CLASSIFICATIONS,
   computeCost,
   dateBR,
   dateTimeBR,
@@ -72,7 +72,7 @@ function OpportunityDetail() {
     queryKey: ["opportunity", id],
     queryFn: async () => {
       const [opp, items, suppliers, analyses] = await Promise.all([
-        supabase.from("opportunities").select("*").eq("id", id).maybeSingle(),
+        supabase.from("opportunities").select("*, nichos(nome), subnichos(nome), micro_nichos(nome)").eq("id", id).maybeSingle(),
         supabase.from("opportunity_items").select("*").eq("opportunity_id", id).order("created_at"),
         supabase.from("suppliers").select("id, legal_name, trust_level").order("legal_name"),
         supabase.from("document_analyses").select("*").eq("opportunity_id", id).order("created_at", { ascending: false }),
@@ -207,7 +207,9 @@ function OpportunityDetail() {
           delivery_place: oppForm["delivery_place"] || null,
           delivery_days: oppForm["delivery_days"] ? Number(oppForm["delivery_days"]) : null,
           payment_days: oppForm["payment_days"] ? Number(oppForm["payment_days"]) : null,
-          classification: oppForm["classification"] || "outros",
+          nicho_id: oppForm["nicho_id"] || null,
+          subnicho_id: oppForm["subnicho_id"] || null,
+          micro_nicho_id: oppForm["micro_nicho_id"] || null,
           estimated_value: oppForm["estimated_value"] ? Number(oppForm["estimated_value"]) : null,
           notes: oppForm["notes"] || null,
         })
@@ -286,7 +288,9 @@ function OpportunityDetail() {
                     delivery_place: opp.delivery_place ?? "",
                     delivery_days: opp.delivery_days != null ? String(opp.delivery_days) : "",
                     payment_days: opp.payment_days != null ? String(opp.payment_days) : "",
-                    classification: opp.classification ?? "outros",
+                    nicho_id: opp.nicho_id ?? "",
+                    subnicho_id: opp.subnicho_id ?? "",
+                    micro_nicho_id: opp.micro_nicho_id ?? "",
                     estimated_value: opp.estimated_value != null ? String(opp.estimated_value) : "",
                     notes: opp.notes ?? "",
                   })
@@ -304,6 +308,9 @@ function OpportunityDetail() {
               <Info label="Prazo de entrega" value={opp.delivery_days ? `${opp.delivery_days} dias` : "—"} />
               <Info label="Prazo de pagamento" value={opp.payment_days ? `${opp.payment_days} dias` : "—"} />
               <Info label="Valor estimado" value={brl(opp.estimated_value)} />
+              <Info label="Nicho" value={opp.nichos?.nome ?? "Não classificada"} />
+              <Info label="Subnicho" value={opp.subnichos?.nome ?? "—"} />
+              <Info label="Micro-nicho" value={opp.micro_nichos?.nome ?? "—"} />
               <Info
                 label="Link"
                 value={
@@ -569,20 +576,10 @@ function OpportunityDetail() {
                   onChange={(v) => setOppForm((f) => ({ ...(f ?? {}), [key]: v }))}
                 />
               ))}
-              <div className="space-y-1.5">
-                <Label>Classificação</Label>
-                <Select
-                  value={oppForm["classification"] ?? "outros"}
-                  onValueChange={(v) => setOppForm((f) => ({ ...(f ?? {}), classification: v }))}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {CLASSIFICATIONS.map((c) => (
-                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <NicheFields
+                value={{ nicho_id: oppForm["nicho_id"] ?? "", subnicho_id: oppForm["subnicho_id"] ?? "", micro_nicho_id: oppForm["micro_nicho_id"] ?? "" }}
+                onChange={(value) => setOppForm((current) => ({ ...(current ?? {}), ...value }))}
+              />
               <div className="space-y-1.5 sm:col-span-2">
                 <Label>Observações</Label>
                 <Textarea

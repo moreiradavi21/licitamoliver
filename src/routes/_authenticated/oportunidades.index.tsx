@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserId } from "@/hooks/use-user";
 import { analyzeEdital } from "@/lib/edital.functions";
 import { PageHeader } from "@/components/AppLayout";
+import { NicheFields } from "@/components/NicheFields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +21,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { brl, CLASSIFICATIONS, dateTimeBR, STATUS, STATUS_ORDER, TRAFFIC, type StatusKey, type TrafficKey } from "@/lib/domain";
+import { brl, dateTimeBR, STATUS, STATUS_ORDER, TRAFFIC, type StatusKey, type TrafficKey } from "@/lib/domain";
 import { FileSearch, Loader2, Plus } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/oportunidades/")({
@@ -46,7 +47,9 @@ const emptyForm = {
   delivery_place: "",
   delivery_days: "",
   payment_days: "",
-  classification: "informatica",
+  nicho_id: "",
+  subnicho_id: "",
+  micro_nicho_id: "",
   status: "nova",
   estimated_value: "",
   notes: "",
@@ -96,7 +99,7 @@ function Opportunities() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("opportunities")
-        .select("*")
+        .select("*, nichos(nome), subnichos(nome), micro_nichos(nome)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -119,7 +122,10 @@ function Opportunities() {
         delivery_place: form.delivery_place || null,
         delivery_days: form.delivery_days ? Number(form.delivery_days) : null,
         payment_days: form.payment_days ? Number(form.payment_days) : null,
-        classification: form.classification,
+        classification: "outros",
+        nicho_id: form.nicho_id || null,
+        subnicho_id: form.subnicho_id || null,
+        micro_nicho_id: form.micro_nicho_id || null,
         status: form.status,
         estimated_value: form.estimated_value ? Number(form.estimated_value) : null,
         notes: form.notes || null,
@@ -284,17 +290,10 @@ function Opportunities() {
                 <F label="Prazo de entrega (dias)" type="number" value={form.delivery_days} onChange={(v) => set("delivery_days", v)} />
                 <F label="Prazo de pagamento (dias)" type="number" value={form.payment_days} onChange={(v) => set("payment_days", v)} />
                 <F label="Valor estimado (R$)" type="number" value={form.estimated_value} onChange={(v) => set("estimated_value", v)} />
-                <div className="space-y-1.5">
-                  <Label>Classificação</Label>
-                  <Select value={form.classification} onValueChange={(v) => set("classification", v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {CLASSIFICATIONS.map((c) => (
-                        <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <NicheFields
+                  value={{ nicho_id: form.nicho_id, subnicho_id: form.subnicho_id, micro_nicho_id: form.micro_nicho_id }}
+                  onChange={(value) => setForm((current) => ({ ...current, ...value }))}
+                />
                 <div className="space-y-1.5">
                   <Label>Status</Label>
                   <Select value={form.status} onValueChange={(v) => set("status", v)}>
@@ -343,6 +342,7 @@ function Opportunities() {
             <tr className="border-b border-border">
               <th className="p-3">Dispensa</th>
               <th className="p-3">Órgão</th>
+              <th className="p-3">Nicho</th>
               <th className="p-3">Disputa</th>
               <th className="p-3">Valor estimado</th>
               <th className="p-3">Semáforo</th>
@@ -351,10 +351,10 @@ function Opportunities() {
           </thead>
           <tbody>
             {isLoading && (
-              <tr><td className="p-4 text-muted-foreground" colSpan={6}>Carregando…</td></tr>
+              <tr><td className="p-4 text-muted-foreground" colSpan={7}>Carregando…</td></tr>
             )}
             {!isLoading && rows.length === 0 && (
-              <tr><td className="p-4 text-muted-foreground" colSpan={6}>Nenhuma oportunidade encontrada.</td></tr>
+              <tr><td className="p-4 text-muted-foreground" colSpan={7}>Nenhuma oportunidade encontrada.</td></tr>
             )}
             {rows.map((o) => (
               <tr key={o.id} className="border-b border-border/60 last:border-0 hover:bg-accent/30">
@@ -365,6 +365,7 @@ function Opportunities() {
                   <div className="text-xs text-muted-foreground">{o.platform ?? "—"}</div>
                 </td>
                 <td className="p-3">{o.agency ?? "—"}</td>
+                <td className="p-3"><span className="font-medium">{o.nichos?.nome ?? "Não classificada"}</span>{o.subnichos?.nome && <span className="block text-xs text-muted-foreground">{o.subnichos.nome}{o.micro_nichos?.nome ? ` · ${o.micro_nichos.nome}` : ""}</span>}</td>
                 <td className="p-3">{dateTimeBR(o.dispute_at)}</td>
                 <td className="p-3">{brl(o.estimated_value)}</td>
                 <td className={`p-3 ${TRAFFIC[(o.traffic_light as TrafficKey) ?? "amarelo"]?.className}`}>
