@@ -83,6 +83,7 @@ export function NicheFields({ value, onChange }: { value: NicheSelection; onChan
 
 export function MultiNicheFields({ value, onChange }: { value: MultiNicheSelection; onChange: (value: MultiNicheSelection) => void }) {
   const { data } = useNicheCatalog();
+  const [newPath, setNewPath] = React.useState<NicheSelection>({ nicho_id: "", subnicho_id: "", micro_nicho_id: "" });
   const toggle = (key: keyof MultiNicheSelection, id: string, checked: boolean) => {
     const next = checked ? [...value[key], id] : value[key].filter((item) => item !== id);
     if (key === "nichos" && !checked) {
@@ -101,6 +102,19 @@ export function MultiNicheFields({ value, onChange }: { value: MultiNicheSelecti
       <div><Label>Nichos atendidos *</Label><div className="mt-2 grid gap-2 rounded-md border p-3 sm:grid-cols-2">{data?.niches.length ? data.niches.map((n) => <label key={n.id} className="flex items-center gap-2 text-sm"><Checkbox checked={value.nichos.includes(n.id)} onCheckedChange={(v) => toggle("nichos", n.id, v === true)} />{n.nome}</label>) : <p className="text-sm text-muted-foreground">Nenhum nicho cadastrado. Crie o primeiro no seletor de uma oportunidade.</p>}</div></div>
       {value.nichos.length > 0 && <div><Label>Subnichos atendidos</Label><div className="mt-2 grid gap-2 rounded-md border p-3 sm:grid-cols-2">{(data?.subniches ?? []).filter((s) => value.nichos.includes(s.nicho_id)).map((s) => <label key={s.id} className="flex items-center gap-2 text-sm"><Checkbox checked={value.subnichos.includes(s.id)} onCheckedChange={(v) => toggle("subnichos", s.id, v === true)} />{s.nome}</label>)}</div></div>}
       {value.subnichos.length > 0 && <div><Label>Micro-nichos atendidos (opcional)</Label><div className="mt-2 grid gap-2 rounded-md border p-3 sm:grid-cols-2">{(data?.micros ?? []).filter((m) => value.subnichos.includes(m.subnicho_id)).map((m) => <label key={m.id} className="flex items-center gap-2 text-sm"><Checkbox checked={value.micros.includes(m.id)} onCheckedChange={(v) => toggle("micros", m.id, v === true)} />{m.nome}</label>)}</div></div>}
+      <details className="rounded-md border p-3">
+        <summary className="cursor-pointer text-sm font-medium">Criar novo nicho, subnicho ou micro-nicho</summary>
+        <div className="mt-3">
+          <NicheFields value={newPath} onChange={(next) => {
+            setNewPath(next);
+            onChange({
+              nichos: next.nicho_id ? [...new Set([...value.nichos, next.nicho_id])] : value.nichos,
+              subnichos: next.subnicho_id ? [...new Set([...value.subnichos, next.subnicho_id])] : value.subnichos,
+              micros: next.micro_nicho_id ? [...new Set([...value.micros, next.micro_nicho_id])] : value.micros,
+            });
+          }} />
+        </div>
+      </details>
     </div>
   );
 }
