@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
+import * as React from "react";
 import { toast } from "sonner";
 import { useUserId } from "@/hooks/use-user";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,8 +43,6 @@ function CreateRow({ label, onCreate }: { label: string; onCreate: (name: string
     </div>
   );
 }
-
-import * as React from "react";
 
 export function NicheFields({ value, onChange }: { value: NicheSelection; onChange: (value: NicheSelection) => void }) {
   const userId = useUserId();
