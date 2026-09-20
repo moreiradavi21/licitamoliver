@@ -9,6 +9,17 @@ import { analyzeEdital } from "@/lib/edital.functions";
 import { PageHeader } from "@/components/AppLayout";
 import { NicheFields } from "@/components/NicheFields";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,7 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { brl, dateTimeBR, STATUS, STATUS_ORDER, TRAFFIC, type StatusKey, type TrafficKey } from "@/lib/domain";
-import { FileSearch, Loader2, Plus } from "lucide-react";
+import { Archive, ArchiveRestore, FileSearch, Loader2, Plus, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/oportunidades/")({
   head: () => ({
@@ -92,6 +103,7 @@ function Opportunities() {
   const [analyzing, setAnalyzing] = useState(false);
   const [pendingAnalysis, setPendingAnalysis] = useState<PendingAnalysis | null>(null);
   const [filter, setFilter] = useState<string>("todos");
+  const [archiveFilter, setArchiveFilter] = useState<"ativas" | "arquivadas">("ativas");
   const [search, setSearch] = useState("");
 
   const { data = [], isLoading } = useQuery({
@@ -173,6 +185,7 @@ function Opportunities() {
 
   const rows = data.filter(
     (o) =>
+      (archiveFilter === "arquivadas" ? Boolean(o.archived_at) : !o.archived_at) &&
       (filter === "todos" || o.status === filter) &&
       (search.trim() === "" ||
         `${o.number} ${o.agency ?? ""} ${o.platform ?? ""}`.toLowerCase().includes(search.toLowerCase())),
@@ -334,6 +347,13 @@ function Opportunities() {
             ))}
           </SelectContent>
         </Select>
+        <Select value={archiveFilter} onValueChange={(value) => setArchiveFilter(value as "ativas" | "arquivadas")}>
+          <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ativas">Ativas</SelectItem>
+            <SelectItem value="arquivadas">Arquivadas</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="panel overflow-x-auto">
@@ -347,14 +367,15 @@ function Opportunities() {
               <th className="p-3">Valor estimado</th>
               <th className="p-3">Semáforo</th>
               <th className="p-3">Status</th>
+              <th className="p-3 text-right">Ações</th>
             </tr>
           </thead>
           <tbody>
             {isLoading && (
-              <tr><td className="p-4 text-muted-foreground" colSpan={7}>Carregando…</td></tr>
+              <tr><td className="p-4 text-muted-foreground" colSpan={8}>Carregando…</td></tr>
             )}
             {!isLoading && rows.length === 0 && (
-              <tr><td className="p-4 text-muted-foreground" colSpan={7}>Nenhuma oportunidade encontrada.</td></tr>
+              <tr><td className="p-4 text-muted-foreground" colSpan={8}>Nenhuma oportunidade encontrada.</td></tr>
             )}
             {rows.map((o) => (
               <tr key={o.id} className="border-b border-border/60 last:border-0 hover:bg-accent/30">
@@ -375,12 +396,82 @@ function Opportunities() {
                 <td className="p-3">
                   {STATUS[o.status as StatusKey]?.emoji} {STATUS[o.status as StatusKey]?.label}
                 </td>
+                <td className="p-3">
+                  <OpportunityActions id={o.id} number={o.number} archived={Boolean(o.archived_at)} />
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
     </>
+  );
+}
+
+function OpportunityActions({ id, number, archived }: { id: string; number: string; archived: boolean }) {
+  const qc = useQueryClient();
+  const archive = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("opportunities")
+        .update({ archived_at: archived ? null : new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success(archived ? "Oportunidade desarquivada" : "Oportunidade arquivada");
+      qc.invalidateQueries({ queryKey: ["opportunities"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const remove = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("opportunities").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Oportunidade excluída");
+      qc.invalidateQueries({ queryKey: ["opportunities"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <div className="flex justify-end gap-1">
+      <Button
+        size="icon"
+        variant="ghost"
+        aria-label={archived ? "Desarquivar oportunidade" : "Arquivar oportunidade"}
+        title={archived ? "Desarquivar" : "Arquivar"}
+        disabled={archive.isPending}
+        onClick={() => archive.mutate()}
+      >
+        {archived ? <ArchiveRestore className="size-4" /> : <Archive className="size-4" />}
+      </Button>
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button size="icon" variant="ghost" aria-label="Excluir oportunidade" title="Excluir">
+            <Trash2 className="size-4 text-destructive" />
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir a oportunidade {number}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação é definitiva. Os itens serão excluídos e as análises de edital serão desvinculadas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction disabled={remove.isPending} onClick={() => remove.mutate()}>
+              Excluir definitivamente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }
 

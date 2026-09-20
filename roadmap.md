@@ -1,4 +1,6 @@
 # Roadmap
+
+- [ ] Adicionar arquivamento, desarquivamento e exclusão de oportunidades na lista e na ficha
 - [x] Criar catálogo hierárquico, vínculos, campos comerciais e regras de acesso
 - [x] Criar seletor reutilizável de nichos e validações brasileiras
 - [x] Refazer Fornecedores com cadastro/edição, filtros, agrupamento e cobertura

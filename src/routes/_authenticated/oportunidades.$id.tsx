@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -7,6 +7,17 @@ import { useSettings, useUserId } from "@/hooks/use-user";
 import { PageHeader } from "@/components/AppLayout";
 import { NicheFields } from "@/components/NicheFields";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,7 +43,7 @@ import {
   type StatusKey,
   type TrafficKey,
 } from "@/lib/domain";
-import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowLeft, Pencil, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/oportunidades/$id")({
   head: () => ({
@@ -62,6 +73,7 @@ const emptyItem = {
 function OpportunityDetail() {
   const { id } = Route.useParams();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const userId = useUserId();
   const { minMargin, goodMargin } = useSettings();
   const [itemForm, setItemForm] = useState(emptyItem);
@@ -98,6 +110,20 @@ function OpportunityDetail() {
       qc.invalidateQueries({ queryKey: ["dashboard"] });
     },
     onError: (e: Error) => toast.error(e.message),
+  });
+
+  const removeOpportunity = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("opportunities").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Oportunidade excluída");
+      qc.invalidateQueries({ queryKey: ["opportunities"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      navigate({ to: "/oportunidades" });
+    },
+    onError: (error: Error) => toast.error(error.message),
   });
 
   const addItem = useMutation({
@@ -266,7 +292,43 @@ function OpportunityDetail() {
       <Link to="/oportunidades" className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" /> Voltar
       </Link>
-      <PageHeader title={`Dispensa ${opp.number}`} subtitle={opp.agency ?? "Órgão não informado"} />
+      <PageHeader
+        title={`Dispensa ${opp.number}`}
+        subtitle={opp.agency ?? "Órgão não informado"}
+        action={
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              disabled={update.isPending}
+              onClick={() => update.mutate({ archived_at: opp.archived_at ? null : new Date().toISOString() }, {
+                onSuccess: () => toast.success(opp.archived_at ? "Oportunidade desarquivada" : "Oportunidade arquivada"),
+              })}
+            >
+              {opp.archived_at ? <ArchiveRestore className="size-4" /> : <Archive className="size-4" />}
+              {opp.archived_at ? "Desarquivar" : "Arquivar"}
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive"><Trash2 className="size-4" /> Excluir</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir a oportunidade {opp.number}?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta ação é definitiva. Os itens serão excluídos e as análises de edital serão desvinculadas.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction disabled={removeOpportunity.isPending} onClick={() => removeOpportunity.mutate()}>
+                    Excluir definitivamente
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        }
+      />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-6">
