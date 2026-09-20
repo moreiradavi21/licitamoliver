@@ -4,4 +4,4 @@
 - [x] Refazer Fornecedores com cadastro/edição, filtros, agrupamento e cobertura
 - [x] Criar ficha do fornecedor com nichos e produtos vinculados
 - [x] Classificar cadastro, edição, lista e detalhe de oportunidades por nicho
-- [ ] Validar compilação, acesso e experiência em telas larga e estreita
+- [ ] Validar visualmente as telas autenticadas em tamanhos largo e estreito — bloqueado por falta de sessão de teste
