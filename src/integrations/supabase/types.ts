@@ -305,6 +305,7 @@ export type Database = {
       opportunities: {
         Row: {
           agency: string | null
+          archived_at: string | null
           classification: string
           created_at: string
           delivery_days: number | null
@@ -334,6 +335,7 @@ export type Database = {
         }
         Insert: {
           agency?: string | null
+          archived_at?: string | null
           classification?: string
           created_at?: string
           delivery_days?: number | null
@@ -363,6 +365,7 @@ export type Database = {
         }
         Update: {
           agency?: string | null
+          archived_at?: string | null
           classification?: string
           created_at?: string
           delivery_days?: number | null
