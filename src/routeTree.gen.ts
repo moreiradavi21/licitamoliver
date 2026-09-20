@@ -18,6 +18,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedEditalRouteImport } from './routes/_authenticated/edital'
 import { Route as AuthenticatedFornecedoresRouteImport } from './routes/_authenticated/fornecedores'
 import { Route as AuthenticatedItensRouteImport } from './routes/_authenticated/itens'
+import { Route as AuthenticatedFornecedoresIdRouteImport } from './routes/_authenticated/fornecedores.$id'
 import { Route as AuthenticatedOportunidadesIndexRouteImport } from './routes/_authenticated/oportunidades.index'
 import { Route as AuthenticatedOportunidadesIdRouteImport } from './routes/_authenticated/oportunidades.$id'
 
@@ -68,6 +69,12 @@ const AuthenticatedItensRoute = AuthenticatedItensRouteImport.update({
   path: '/itens',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedFornecedoresIdRoute =
+  AuthenticatedFornecedoresIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedFornecedoresRoute,
+  } as any)
 const AuthenticatedOportunidadesIndexRoute =
   AuthenticatedOportunidadesIndexRouteImport.update({
     id: '/oportunidades/',
@@ -88,8 +95,9 @@ export interface FileRoutesByFullPath {
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/edital': typeof AuthenticatedEditalRoute
-  '/fornecedores': typeof AuthenticatedFornecedoresRoute
+  '/fornecedores': typeof AuthenticatedFornecedoresRouteWithChildren
   '/itens': typeof AuthenticatedItensRoute
+  '/fornecedores/$id': typeof AuthenticatedFornecedoresIdRoute
   '/oportunidades/$id': typeof AuthenticatedOportunidadesIdRoute
   '/oportunidades/': typeof AuthenticatedOportunidadesIndexRoute
 }
@@ -100,8 +108,9 @@ export interface FileRoutesByTo {
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/edital': typeof AuthenticatedEditalRoute
-  '/fornecedores': typeof AuthenticatedFornecedoresRoute
+  '/fornecedores': typeof AuthenticatedFornecedoresRouteWithChildren
   '/itens': typeof AuthenticatedItensRoute
+  '/fornecedores/$id': typeof AuthenticatedFornecedoresIdRoute
   '/oportunidades/$id': typeof AuthenticatedOportunidadesIdRoute
   '/oportunidades': typeof AuthenticatedOportunidadesIndexRoute
 }
@@ -114,8 +123,9 @@ export interface FileRoutesById {
   '/_authenticated/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/edital': typeof AuthenticatedEditalRoute
-  '/_authenticated/fornecedores': typeof AuthenticatedFornecedoresRoute
+  '/_authenticated/fornecedores': typeof AuthenticatedFornecedoresRouteWithChildren
   '/_authenticated/itens': typeof AuthenticatedItensRoute
+  '/_authenticated/fornecedores/$id': typeof AuthenticatedFornecedoresIdRoute
   '/_authenticated/oportunidades/$id': typeof AuthenticatedOportunidadesIdRoute
   '/_authenticated/oportunidades/': typeof AuthenticatedOportunidadesIndexRoute
 }
@@ -130,6 +140,7 @@ export interface FileRouteTypes {
     | '/edital'
     | '/fornecedores'
     | '/itens'
+    | '/fornecedores/$id'
     | '/oportunidades/$id'
     | '/oportunidades/'
   fileRoutesByTo: FileRoutesByTo
@@ -142,6 +153,7 @@ export interface FileRouteTypes {
     | '/edital'
     | '/fornecedores'
     | '/itens'
+    | '/fornecedores/$id'
     | '/oportunidades/$id'
     | '/oportunidades'
   id:
@@ -155,6 +167,7 @@ export interface FileRouteTypes {
     | '/_authenticated/edital'
     | '/_authenticated/fornecedores'
     | '/_authenticated/itens'
+    | '/_authenticated/fornecedores/$id'
     | '/_authenticated/oportunidades/$id'
     | '/_authenticated/oportunidades/'
   fileRoutesById: FileRoutesById
@@ -230,6 +243,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedItensRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/fornecedores/$id': {
+      id: '/_authenticated/fornecedores/$id'
+      path: '/$id'
+      fullPath: '/fornecedores/$id'
+      preLoaderRoute: typeof AuthenticatedFornecedoresIdRouteImport
+      parentRoute: typeof AuthenticatedFornecedoresRoute
+    }
     '/_authenticated/oportunidades/': {
       id: '/_authenticated/oportunidades/'
       path: '/oportunidades'
@@ -247,12 +267,26 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedFornecedoresRouteChildren {
+  AuthenticatedFornecedoresIdRoute: typeof AuthenticatedFornecedoresIdRoute
+}
+
+const AuthenticatedFornecedoresRouteChildren: AuthenticatedFornecedoresRouteChildren =
+  {
+    AuthenticatedFornecedoresIdRoute: AuthenticatedFornecedoresIdRoute,
+  }
+
+const AuthenticatedFornecedoresRouteWithChildren =
+  AuthenticatedFornecedoresRoute._addFileChildren(
+    AuthenticatedFornecedoresRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalculadoraRoute: typeof AuthenticatedCalculadoraRoute
   AuthenticatedConfiguracoesRoute: typeof AuthenticatedConfiguracoesRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEditalRoute: typeof AuthenticatedEditalRoute
-  AuthenticatedFornecedoresRoute: typeof AuthenticatedFornecedoresRoute
+  AuthenticatedFornecedoresRoute: typeof AuthenticatedFornecedoresRouteWithChildren
   AuthenticatedItensRoute: typeof AuthenticatedItensRoute
   AuthenticatedOportunidadesIdRoute: typeof AuthenticatedOportunidadesIdRoute
   AuthenticatedOportunidadesIndexRoute: typeof AuthenticatedOportunidadesIndexRoute
@@ -263,7 +297,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedConfiguracoesRoute: AuthenticatedConfiguracoesRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEditalRoute: AuthenticatedEditalRoute,
-  AuthenticatedFornecedoresRoute: AuthenticatedFornecedoresRoute,
+  AuthenticatedFornecedoresRoute: AuthenticatedFornecedoresRouteWithChildren,
   AuthenticatedItensRoute: AuthenticatedItensRoute,
   AuthenticatedOportunidadesIdRoute: AuthenticatedOportunidadesIdRoute,
   AuthenticatedOportunidadesIndexRoute: AuthenticatedOportunidadesIndexRoute,

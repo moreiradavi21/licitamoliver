@@ -61,6 +61,62 @@ export type Database = {
           },
         ]
       }
+      fornecedores_nichos: {
+        Row: {
+          created_at: string
+          fornecedor_id: string
+          id: string
+          micro_nicho_id: string | null
+          nicho_id: string
+          subnicho_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          fornecedor_id: string
+          id?: string
+          micro_nicho_id?: string | null
+          nicho_id: string
+          subnicho_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          fornecedor_id?: string
+          id?: string
+          micro_nicho_id?: string | null
+          nicho_id?: string
+          subnicho_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fornecedores_nichos_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fornecedores_nichos_micro_nicho_id_fkey"
+            columns: ["micro_nicho_id"]
+            isOneToOne: false
+            referencedRelation: "micro_nichos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fornecedores_nichos_nicho_id_fkey"
+            columns: ["nicho_id"]
+            isOneToOne: false
+            referencedRelation: "nichos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fornecedores_nichos_subnicho_id_fkey"
+            columns: ["subnicho_id"]
+            isOneToOne: false
+            referencedRelation: "subnichos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       item_supplier_prices: {
         Row: {
           created_at: string
@@ -187,6 +243,65 @@ export type Database = {
         }
         Relationships: []
       }
+      micro_nichos: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          subnicho_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          subnicho_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          subnicho_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "micro_nichos_subnicho_id_fkey"
+            columns: ["subnicho_id"]
+            isOneToOne: false
+            referencedRelation: "subnichos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nichos: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       opportunities: {
         Row: {
           agency: string | null
@@ -199,6 +314,8 @@ export type Database = {
           estimated_profit: number | null
           estimated_value: number | null
           id: string
+          micro_nicho_id: string | null
+          nicho_id: string | null
           notes: string | null
           number: string
           payment_days: number | null
@@ -207,6 +324,7 @@ export type Database = {
           published_at: string | null
           realized_profit: number | null
           status: string
+          subnicho_id: string | null
           supplier_confirmed: boolean
           traffic_light: string
           uasg: string | null
@@ -225,6 +343,8 @@ export type Database = {
           estimated_profit?: number | null
           estimated_value?: number | null
           id?: string
+          micro_nicho_id?: string | null
+          nicho_id?: string | null
           notes?: string | null
           number: string
           payment_days?: number | null
@@ -233,6 +353,7 @@ export type Database = {
           published_at?: string | null
           realized_profit?: number | null
           status?: string
+          subnicho_id?: string | null
           supplier_confirmed?: boolean
           traffic_light?: string
           uasg?: string | null
@@ -251,6 +372,8 @@ export type Database = {
           estimated_profit?: number | null
           estimated_value?: number | null
           id?: string
+          micro_nicho_id?: string | null
+          nicho_id?: string | null
           notes?: string | null
           number?: string
           payment_days?: number | null
@@ -259,6 +382,7 @@ export type Database = {
           published_at?: string | null
           realized_profit?: number | null
           status?: string
+          subnicho_id?: string | null
           supplier_confirmed?: boolean
           traffic_light?: string
           uasg?: string | null
@@ -266,7 +390,29 @@ export type Database = {
           user_id?: string
           won_value?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "opportunities_micro_nicho_id_fkey"
+            columns: ["micro_nicho_id"]
+            isOneToOne: false
+            referencedRelation: "micro_nichos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunities_nicho_id_fkey"
+            columns: ["nicho_id"]
+            isOneToOne: false
+            referencedRelation: "nichos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunities_subnicho_id_fkey"
+            columns: ["subnicho_id"]
+            isOneToOne: false
+            referencedRelation: "subnichos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       opportunity_items: {
         Row: {
@@ -401,20 +547,60 @@ export type Database = {
         }
         Relationships: []
       }
+      subnichos: {
+        Row: {
+          created_at: string
+          id: string
+          nicho_id: string
+          nome: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nicho_id: string
+          nome: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nicho_id?: string
+          nome?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subnichos_nicho_id_fkey"
+            columns: ["nicho_id"]
+            isOneToOne: false
+            referencedRelation: "nichos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppliers: {
         Row: {
           avg_delivery_days: number | null
           categories: string[]
+          cidade: string | null
           cnpj: string | null
+          condicoes_pagamento: string | null
           contact_name: string | null
           created_at: string
           delivers_to_agency: boolean
           email: string | null
+          frete_bh: string | null
+          garantia: string | null
           had_problems: boolean
           id: string
           issues_invoice: boolean
           legal_name: string
           notes: string | null
+          quantidade_minima: number | null
           rating_aftersales: number
           rating_deadline: number
           rating_price: number
@@ -422,25 +608,35 @@ export type Database = {
           rating_response: number
           real_stock: boolean
           return_policy: string | null
+          telefone: string | null
           trust_level: string
+          uf: string | null
+          ultima_cotacao: string | null
           updated_at: string
           user_id: string
+          vende_sob_demanda: string
+          vendedor: string | null
           website: string | null
           whatsapp: string | null
         }
         Insert: {
           avg_delivery_days?: number | null
           categories?: string[]
+          cidade?: string | null
           cnpj?: string | null
+          condicoes_pagamento?: string | null
           contact_name?: string | null
           created_at?: string
           delivers_to_agency?: boolean
           email?: string | null
+          frete_bh?: string | null
+          garantia?: string | null
           had_problems?: boolean
           id?: string
           issues_invoice?: boolean
           legal_name: string
           notes?: string | null
+          quantidade_minima?: number | null
           rating_aftersales?: number
           rating_deadline?: number
           rating_price?: number
@@ -448,25 +644,35 @@ export type Database = {
           rating_response?: number
           real_stock?: boolean
           return_policy?: string | null
+          telefone?: string | null
           trust_level?: string
+          uf?: string | null
+          ultima_cotacao?: string | null
           updated_at?: string
           user_id: string
+          vende_sob_demanda?: string
+          vendedor?: string | null
           website?: string | null
           whatsapp?: string | null
         }
         Update: {
           avg_delivery_days?: number | null
           categories?: string[]
+          cidade?: string | null
           cnpj?: string | null
+          condicoes_pagamento?: string | null
           contact_name?: string | null
           created_at?: string
           delivers_to_agency?: boolean
           email?: string | null
+          frete_bh?: string | null
+          garantia?: string | null
           had_problems?: boolean
           id?: string
           issues_invoice?: boolean
           legal_name?: string
           notes?: string | null
+          quantidade_minima?: number | null
           rating_aftersales?: number
           rating_deadline?: number
           rating_price?: number
@@ -474,9 +680,14 @@ export type Database = {
           rating_response?: number
           real_stock?: boolean
           return_policy?: string | null
+          telefone?: string | null
           trust_level?: string
+          uf?: string | null
+          ultima_cotacao?: string | null
           updated_at?: string
           user_id?: string
+          vende_sob_demanda?: string
+          vendedor?: string | null
           website?: string | null
           whatsapp?: string | null
         }

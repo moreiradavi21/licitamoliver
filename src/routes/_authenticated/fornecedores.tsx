@@ -1,307 +1,88 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Building2, LayoutList, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import { useUserId } from "@/hooks/use-user";
+import { MultiNicheFields, useNicheCatalog, type MultiNicheSelection } from "@/components/NicheFields";
 import { PageHeader } from "@/components/AppLayout";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CLASSIFICATIONS, TRUST_LEVELS } from "@/lib/domain";
-import { Plus, Trash2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { useUserId } from "@/hooks/use-user";
+import { supabase } from "@/integrations/supabase/client";
+import { formatCnpj, isValidCnpj, isValidEmail } from "@/lib/br-validation";
+import { TRUST_LEVELS } from "@/lib/domain";
 
 export const Route = createFileRoute("/_authenticated/fornecedores")({
-  head: () => ({
-    meta: [
-      { title: "Fornecedores · Licita360" },
-      { name: "description", content: "Cadastro e avaliação de fornecedores: preço, resposta, prazo, qualidade e pós-venda." },
-      { property: "og:title", content: "Fornecedores · Licita360" },
-      { property: "og:description", content: "Avalie e classifique seus fornecedores por confiabilidade." },
-    ],
-  }),
+  head: () => ({ meta: [
+    { title: "Fornecedores e cobertura por nicho · Licita360" },
+    { name: "description", content: "Cadastre fornecedores, organize nichos e acompanhe a cobertura comercial." },
+    { property: "og:title", content: "Fornecedores e cobertura por nicho · Licita360" },
+    { property: "og:description", content: "Fornecedores organizados por nicho, localização e venda sob demanda." },
+    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
+  ] }),
   component: SuppliersPage,
 });
 
-const empty = {
-  legal_name: "",
-  cnpj: "",
-  contact_name: "",
-  whatsapp: "",
-  email: "",
-  website: "",
-  categories: "informatica",
-  rating_price: "3",
-  rating_response: "3",
-  rating_deadline: "3",
-  rating_quality: "3",
-  rating_aftersales: "3",
-  trust_level: "cautela",
-  issues_invoice: true,
-  real_stock: false,
-  delivers_to_agency: false,
-  avg_delivery_days: "",
-  return_policy: "",
-  had_problems: false,
-  notes: "",
-};
-
-const RATINGS = ["rating_price", "rating_response", "rating_deadline", "rating_quality", "rating_aftersales"] as const;
-const RATING_LABELS: Record<(typeof RATINGS)[number], string> = {
-  rating_price: "Preço",
-  rating_response: "Resposta",
-  rating_deadline: "Prazo",
-  rating_quality: "Qualidade",
-  rating_aftersales: "Pós-venda",
-};
+const empty = { legal_name: "", cnpj: "", uf: "", cidade: "", website: "", telefone: "", whatsapp: "", email: "", contact_name: "", vendedor: "", avg_delivery_days: "", condicoes_pagamento: "", garantia: "", quantidade_minima: "", frete_bh: "", ultima_cotacao: "", vende_sob_demanda: "nao", trust_level: "cautela", issues_invoice: true, real_stock: false, delivers_to_agency: false, return_policy: "", notes: "", rating_price: "3", rating_response: "3", rating_deadline: "3", rating_quality: "3", rating_aftersales: "3" };
+type Form = typeof empty;
+const emptyNiches: MultiNicheSelection = { nichos: [], subnichos: [], micros: [] };
 
 function SuppliersPage() {
-  const qc = useQueryClient();
-  const userId = useUserId();
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState(empty);
-  const [search, setSearch] = useState("");
-
-  const { data = [] } = useQuery({
-    queryKey: ["suppliers"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("suppliers").select("*").order("legal_name");
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const create = useMutation({
-    mutationFn: async () => {
-      if (!userId) throw new Error("Sessão expirada");
-      if (!form.legal_name.trim()) throw new Error("Informe a razão social");
-      const { error } = await supabase.from("suppliers").insert({
-        user_id: userId,
-        legal_name: form.legal_name.trim(),
-        cnpj: form.cnpj || null,
-        contact_name: form.contact_name || null,
-        whatsapp: form.whatsapp || null,
-        email: form.email || null,
-        website: form.website || null,
-        categories: [form.categories],
-        rating_price: Number(form.rating_price),
-        rating_response: Number(form.rating_response),
-        rating_deadline: Number(form.rating_deadline),
-        rating_quality: Number(form.rating_quality),
-        rating_aftersales: Number(form.rating_aftersales),
-        trust_level: form.trust_level,
-        issues_invoice: form.issues_invoice,
-        real_stock: form.real_stock,
-        delivers_to_agency: form.delivers_to_agency,
-        avg_delivery_days: form.avg_delivery_days ? Number(form.avg_delivery_days) : null,
-        return_policy: form.return_policy || null,
-        had_problems: form.had_problems,
-        notes: form.notes || null,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Fornecedor cadastrado");
-      setForm(empty);
-      setOpen(false);
-      qc.invalidateQueries({ queryKey: ["suppliers"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const update = useMutation({
-    mutationFn: async ({ id, patch }: { id: string; patch: Record<string, unknown> }) => {
-      const { error } = await supabase.from("suppliers").update(patch as never).eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["suppliers"] }),
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const remove = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("suppliers").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["suppliers"] }),
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const set = (k: keyof typeof empty, v: string | boolean) =>
-    setForm((f) => ({ ...f, [k]: v }) as typeof empty);
-
-  const rows = data.filter((s) =>
-    `${s.legal_name} ${s.cnpj ?? ""} ${s.contact_name ?? ""}`.toLowerCase().includes(search.toLowerCase()),
-  );
-
-  const score = (s: Record<string, unknown>) =>
-    RATINGS.reduce((acc, k) => acc + Number(s[k] ?? 0), 0) / RATINGS.length;
-
-  return (
-    <>
-      <PageHeader
-        title="Fornecedores"
-        subtitle="Quem entrega de verdade — avaliação por preço, resposta, prazo, qualidade e pós-venda."
-        action={
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button><Plus className="size-4" /> Novo fornecedor</Button>
-            </DialogTrigger>
-            <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
-              <DialogHeader><DialogTitle>Novo fornecedor</DialogTitle></DialogHeader>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Razão social *" value={form.legal_name} onChange={(v) => set("legal_name", v)} />
-                <Field label="CNPJ" value={form.cnpj} onChange={(v) => set("cnpj", v)} />
-                <Field label="Contato" value={form.contact_name} onChange={(v) => set("contact_name", v)} />
-                <Field label="WhatsApp" value={form.whatsapp} onChange={(v) => set("whatsapp", v)} />
-                <Field label="E-mail" value={form.email} onChange={(v) => set("email", v)} />
-                <Field label="Site" value={form.website} onChange={(v) => set("website", v)} />
-                <div className="space-y-1.5">
-                  <Label>Categoria principal</Label>
-                  <Select value={form.categories} onValueChange={(v) => set("categories", v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {CLASSIFICATIONS.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Field label="Prazo médio de entrega (dias)" type="number" value={form.avg_delivery_days} onChange={(v) => set("avg_delivery_days", v)} />
-                {RATINGS.map((r) => (
-                  <div key={r} className="space-y-1.5">
-                    <Label>{RATING_LABELS[r]} (0–5)</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={5}
-                      value={form[r]}
-                      onChange={(e) => set(r, e.target.value)}
-                    />
-                  </div>
-                ))}
-                <div className="space-y-1.5">
-                  <Label>Nível de confiança</Label>
-                  <Select value={form.trust_level} onValueChange={(v) => set("trust_level", v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {TRUST_LEVELS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Toggle label="Emite nota fiscal" checked={form.issues_invoice} onChange={(v) => set("issues_invoice", v)} />
-                <Toggle label="Estoque real" checked={form.real_stock} onChange={(v) => set("real_stock", v)} />
-                <Toggle label="Entrega no órgão" checked={form.delivers_to_agency} onChange={(v) => set("delivers_to_agency", v)} />
-                <Toggle label="Já teve problemas" checked={form.had_problems} onChange={(v) => set("had_problems", v)} />
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label>Política de troca/devolução</Label>
-                  <Textarea value={form.return_policy} onChange={(e) => set("return_policy", e.target.value)} />
-                </div>
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label>Observações</Label>
-                  <Textarea value={form.notes} onChange={(e) => set("notes", e.target.value)} />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button disabled={create.isPending} onClick={() => create.mutate()}>Salvar</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        }
-      />
-
-      <Input
-        placeholder="Buscar fornecedor"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="mb-4 max-w-xs"
-      />
-
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {rows.length === 0 && <p className="text-sm text-muted-foreground">Nenhum fornecedor cadastrado.</p>}
-        {rows.map((s) => (
-          <article key={s.id} className="panel space-y-3 p-5">
-            <header className="flex items-start justify-between gap-2">
-              <div>
-                <h2 className="font-semibold">{s.legal_name}</h2>
-                <p className="text-xs text-muted-foreground">{s.cnpj ?? "CNPJ não informado"}</p>
-              </div>
-              <Button size="icon" variant="ghost" onClick={() => remove.mutate(s.id)}>
-                <Trash2 className="size-4" />
-              </Button>
-            </header>
-            <p className="text-sm text-muted-foreground">
-              {s.contact_name ?? "—"} · {s.whatsapp ?? "sem WhatsApp"}
-            </p>
-            <p className="text-sm">
-              Nota média: <strong>{score(s as unknown as Record<string, unknown>).toFixed(1)}</strong> / 5 ·{" "}
-              {s.avg_delivery_days ? `${s.avg_delivery_days} dias` : "prazo não informado"}
-            </p>
-            <ul className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
-              {RATINGS.map((r) => (
-                <li key={r}>{RATING_LABELS[r]}: {"★".repeat(Number(s[r] ?? 0))}{"☆".repeat(5 - Number(s[r] ?? 0))}</li>
-              ))}
-            </ul>
-            <ul className="space-y-0.5 text-xs text-muted-foreground">
-              <li>{s.issues_invoice ? "✅" : "⚠️"} Emite nota fiscal</li>
-              <li>{s.real_stock ? "✅" : "⚠️"} Estoque real</li>
-              <li>{s.delivers_to_agency ? "✅" : "⚠️"} Entrega no órgão</li>
-              <li>{s.had_problems ? "🚨 Já teve problemas" : "✅ Sem problemas registrados"}</li>
-            </ul>
-            <Select value={s.trust_level} onValueChange={(v) => update.mutate({ id: s.id, patch: { trust_level: v } })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {TRUST_LEVELS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </article>
-        ))}
-      </div>
-    </>
-  );
+  const userId = useUserId(); const qc = useQueryClient(); const catalog = useNicheCatalog();
+  const [open, setOpen] = useState(false); const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<Form>(empty); const [selection, setSelection] = useState<MultiNicheSelection>(emptyNiches);
+  const [search, setSearch] = useState(""); const [niche, setNiche] = useState("all"); const [sub, setSub] = useState("all"); const [micro, setMicro] = useState("all");
+  const [uf, setUf] = useState("all"); const [city, setCity] = useState("all"); const [demand, setDemand] = useState("all"); const [grouped, setGrouped] = useState(false); const [tab, setTab] = useState("lista");
+  const { data, isLoading } = useQuery({ queryKey: ["suppliers-with-niches"], queryFn: async () => {
+    const [suppliers, links] = await Promise.all([supabase.from("suppliers").select("*").order("legal_name"), supabase.from("fornecedores_nichos").select("*")]);
+    if (suppliers.error) throw suppliers.error; if (links.error) throw links.error;
+    return { suppliers: suppliers.data ?? [], links: links.data ?? [] };
+  }});
+  const reset = () => { setForm(empty); setSelection(emptyNiches); setEditingId(null); };
+  const set = (key: keyof Form, value: string | boolean) => setForm((old) => ({ ...old, [key]: value }) as Form);
+  const edit = (supplier: NonNullable<typeof data>["suppliers"][number]) => {
+    const links = data?.links.filter((l) => l.fornecedor_id === supplier.id) ?? [];
+    setEditingId(supplier.id); setSelection({ nichos: [...new Set(links.map((l) => l.nicho_id))], subnichos: [...new Set(links.flatMap((l) => l.subnicho_id ? [l.subnicho_id] : []))], micros: [...new Set(links.flatMap((l) => l.micro_nicho_id ? [l.micro_nicho_id] : []))] });
+    setForm(Object.fromEntries(Object.keys(empty).map((key) => [key, supplier[key as keyof typeof supplier] == null ? empty[key as keyof Form] : String(supplier[key as keyof typeof supplier])])) as Form);
+    setForm((old) => ({ ...old, issues_invoice: supplier.issues_invoice, real_stock: supplier.real_stock, delivers_to_agency: supplier.delivers_to_agency })); setOpen(true);
+  };
+  const save = useMutation({ mutationFn: async () => {
+    if (!userId) throw new Error("Sessão expirada"); if (!form.legal_name.trim()) throw new Error("Informe o nome do fornecedor");
+    if (!isValidCnpj(form.cnpj)) throw new Error("CNPJ inválido"); if (!isValidEmail(form.email)) throw new Error("E-mail inválido"); if (!selection.nichos.length) throw new Error("Selecione ao menos um nicho atendido");
+    const payload = { user_id: userId, legal_name: form.legal_name.trim(), cnpj: form.cnpj || null, uf: form.uf || null, cidade: form.cidade || null, website: form.website || null, telefone: form.telefone || null, whatsapp: form.whatsapp || null, email: form.email || null, contact_name: form.contact_name || null, vendedor: form.vendedor || null, avg_delivery_days: form.avg_delivery_days ? Number(form.avg_delivery_days) : null, condicoes_pagamento: form.condicoes_pagamento || null, garantia: form.garantia || null, quantidade_minima: form.quantidade_minima ? Number(form.quantidade_minima) : null, frete_bh: form.frete_bh || null, ultima_cotacao: form.ultima_cotacao || null, vende_sob_demanda: form.vende_sob_demanda, trust_level: form.trust_level, issues_invoice: form.issues_invoice, real_stock: form.real_stock, delivers_to_agency: form.delivers_to_agency, return_policy: form.return_policy || null, notes: form.notes || null, rating_price: Number(form.rating_price), rating_response: Number(form.rating_response), rating_deadline: Number(form.rating_deadline), rating_quality: Number(form.rating_quality), rating_aftersales: Number(form.rating_aftersales) };
+    let supplierId = editingId;
+    if (editingId) { const { error } = await supabase.from("suppliers").update(payload as never).eq("id", editingId); if (error) throw error; const removed = await supabase.from("fornecedores_nichos").delete().eq("fornecedor_id", editingId); if (removed.error) throw removed.error; }
+    else { const inserted = await supabase.from("suppliers").insert(payload).select("id").single(); if (inserted.error) throw inserted.error; supplierId = inserted.data.id; }
+    if (!supplierId) throw new Error("Não foi possível salvar o fornecedor");
+    const rows: { fornecedor_id: string; nicho_id: string; subnicho_id: string | null; micro_nicho_id: string | null }[] = [];
+    for (const nicheId of selection.nichos) { const subs = selection.subnichos.filter((id) => catalog.data?.subniches.some((s) => s.id === id && s.nicho_id === nicheId)); if (!subs.length) rows.push({ fornecedor_id: supplierId, nicho_id: nicheId, subnicho_id: null, micro_nicho_id: null }); for (const subId of subs) { const micros = selection.micros.filter((id) => catalog.data?.micros.some((m) => m.id === id && m.subnicho_id === subId)); if (!micros.length) rows.push({ fornecedor_id: supplierId, nicho_id: nicheId, subnicho_id: subId, micro_nicho_id: null }); else micros.forEach((microId) => rows.push({ fornecedor_id: supplierId as string, nicho_id: nicheId, subnicho_id: subId, micro_nicho_id: microId })); } }
+    const linked = await supabase.from("fornecedores_nichos").insert(rows); if (linked.error) throw linked.error;
+  }, onSuccess: () => { toast.success(editingId ? "Fornecedor atualizado" : "Fornecedor cadastrado"); setOpen(false); reset(); qc.invalidateQueries({ queryKey: ["suppliers-with-niches"] }); qc.invalidateQueries({ queryKey: ["suppliers"] }); }, onError: (e: Error) => toast.error(e.message) });
+  const remove = useMutation({ mutationFn: async (id: string) => { if (!confirm("Excluir este fornecedor?")) return; const { error } = await supabase.from("suppliers").delete().eq("id", id); if (error) throw error; }, onSuccess: () => qc.invalidateQueries({ queryKey: ["suppliers-with-niches"] }), onError: (e: Error) => toast.error(e.message) });
+  const nameOf = (id: string, level: "n" | "s" | "m") => (level === "n" ? catalog.data?.niches : level === "s" ? catalog.data?.subniches : catalog.data?.micros)?.find((row) => row.id === id)?.nome ?? "—";
+  const rows = useMemo(() => (data?.suppliers ?? []).filter((s) => { const links = data?.links.filter((l) => l.fornecedor_id === s.id) ?? []; return `${s.legal_name} ${s.cnpj ?? ""}`.toLowerCase().includes(search.toLowerCase()) && (niche === "all" || links.some((l) => l.nicho_id === niche)) && (sub === "all" || links.some((l) => l.subnicho_id === sub)) && (micro === "all" || links.some((l) => l.micro_nicho_id === micro)) && (uf === "all" || s.uf === uf) && (city === "all" || s.cidade === city) && (demand === "all" || s.vende_sob_demanda === demand); }), [data, search, niche, sub, micro, uf, city, demand]);
+  const groups = grouped ? (catalog.data?.niches ?? []).map((n) => ({ label: n.nome, rows: rows.filter((s) => data?.links.some((l) => l.fornecedor_id === s.id && l.nicho_id === n.id)) })).filter((g) => g.rows.length) : [{ label: "", rows }];
+  const ufs = [...new Set((data?.suppliers ?? []).flatMap((s) => s.uf ? [s.uf] : []))].sort(); const cities = [...new Set((data?.suppliers ?? []).flatMap((s) => s.cidade ? [s.cidade] : []))].sort();
+  return <>
+    <PageHeader title="Fornecedores" subtitle="Cobertura comercial por nicho e capacidade de fornecimento." action={<Button onClick={() => { reset(); setOpen(true); }}><Plus className="size-4" /> Novo fornecedor</Button>} />
+    <Tabs value={tab} onValueChange={setTab}><TabsList><TabsTrigger value="lista"><LayoutList className="mr-2 size-4" />Lista</TabsTrigger><TabsTrigger value="cobertura"><Building2 className="mr-2 size-4" />Cobertura por nicho</TabsTrigger></TabsList>
+      <TabsContent value="lista" className="space-y-4"><div className="grid gap-2 md:grid-cols-4 xl:grid-cols-8"><div className="relative md:col-span-2"><Search className="absolute left-3 top-3 size-4 text-muted-foreground" /><Input className="pl-9" placeholder="Nome ou CNPJ" value={search} onChange={(e) => setSearch(e.target.value)} /></div><Filter value={niche} onChange={(v) => { setNiche(v); setSub("all"); setMicro("all"); }} label="Todos os nichos" items={catalog.data?.niches ?? []} /><Filter value={sub} onChange={(v) => { setSub(v); setMicro("all"); }} label="Todos os subnichos" items={(catalog.data?.subniches ?? []).filter((s) => niche === "all" || s.nicho_id === niche)} /><Filter value={micro} onChange={setMicro} label="Todos os micro-nichos" items={(catalog.data?.micros ?? []).filter((m) => sub === "all" || m.subnicho_id === sub)} /><Filter value={uf} onChange={setUf} label="Todas as UFs" items={ufs.map((x) => ({ id: x, nome: x }))} /><Filter value={city} onChange={setCity} label="Todas as cidades" items={cities.map((x) => ({ id: x, nome: x }))} /><Select value={demand} onValueChange={setDemand}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Sob demanda: todos</SelectItem><SelectItem value="sim">Sim</SelectItem><SelectItem value="parcialmente">Parcialmente</SelectItem><SelectItem value="nao">Não</SelectItem></SelectContent></Select></div><label className="flex items-center gap-2 text-sm"><Switch checked={grouped} onCheckedChange={setGrouped} /> Agrupar por nicho</label>
+        {isLoading && <p className="text-sm text-muted-foreground">Carregando…</p>}{groups.map((group) => <section key={group.label || "all"} className="space-y-3">{group.label && <h2 className="border-b pb-2 font-semibold">{group.label}</h2>}<div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">{group.rows.map((s) => { const links = data?.links.filter((l) => l.fornecedor_id === s.id) ?? []; const nicheNames = [...new Set(links.map((l) => nameOf(l.nicho_id, "n")))]; return <article key={s.id} className="panel space-y-3 p-5"><div className="flex items-start justify-between gap-3"><div><Link to="/fornecedores/$id" params={{ id: s.id }} className="font-semibold text-primary hover:underline">{s.legal_name}</Link><p className="text-xs text-muted-foreground">{s.cnpj || "CNPJ não informado"} · {[s.cidade, s.uf].filter(Boolean).join("/") || "Local não informado"}</p></div><div className="flex"><Button size="icon" variant="ghost" title="Editar" onClick={() => edit(s)}><Pencil className="size-4" /></Button><Button size="icon" variant="ghost" title="Excluir" onClick={() => remove.mutate(s.id)}><Trash2 className="size-4" /></Button></div></div><div className="flex flex-wrap gap-1">{nicheNames.slice(0, 3).map((name) => <Badge key={name} variant="secondary">{name}</Badge>)}{nicheNames.length > 3 && <Badge variant="outline">+{nicheNames.length - 3}</Badge>}</div><div className="flex items-center justify-between text-sm"><span>{s.vendedor || s.contact_name || "Contato não informado"}</span><Demand value={s.vende_sob_demanda} /></div><p className="text-xs text-muted-foreground">Envio: {s.avg_delivery_days ? `${s.avg_delivery_days} dias` : "não informado"} · Última cotação: {s.ultima_cotacao ? new Date(`${s.ultima_cotacao}T12:00:00`).toLocaleDateString("pt-BR") : "não informada"}</p></article>; })}</div></section>)}{!isLoading && rows.length === 0 && <p className="text-sm text-muted-foreground">Nenhum fornecedor encontrado.</p>}</TabsContent>
+      <TabsContent value="cobertura"><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{(catalog.data?.niches ?? []).map((n) => { const related = data?.links.filter((l) => l.nicho_id === n.id) ?? []; const ids = [...new Set(related.map((l) => l.fornecedor_id))]; const count = ids.length; const demandCount = (data?.suppliers ?? []).filter((s) => ids.includes(s.id) && s.vende_sob_demanda === "sim").length; return <Button key={n.id} type="button" variant="ghost" onClick={() => { setNiche(n.id); setSub("all"); setMicro("all"); setTab("lista"); }} className={`panel h-auto block whitespace-normal p-5 text-left border-l-4 ${count >= 3 ? "border-l-success" : count === 2 ? "border-l-warning" : "border-l-destructive"}`}><h2 className="font-semibold">{n.nome}</h2><p className="mt-2 text-2xl font-semibold">{count}</p><p className="text-xs text-muted-foreground">fornecedores · {demandCount} sob demanda</p>{count < 3 && <p className="mt-3 text-sm font-medium text-destructive">Quantidade insuficiente de fornecedores cadastrados.</p>}<div className="mt-3 space-y-1 border-t pt-3">{(catalog.data?.subniches ?? []).filter((s) => s.nicho_id === n.id).map((s) => { const subCount = new Set(related.filter((l) => l.subnicho_id === s.id).map((l) => l.fornecedor_id)).size; return <div key={s.id} className="flex justify-between text-xs"><span>{s.nome}</span><span>{subCount}</span></div>; })}</div></Button>; })}</div>{!catalog.data?.niches.length && <p className="text-sm text-muted-foreground">Nenhum nicho cadastrado.</p>}</TabsContent>
+    </Tabs>
+    <Dialog open={open} onOpenChange={(next) => { setOpen(next); if (!next) reset(); }}><DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl"><DialogHeader><DialogTitle>{editingId ? "Editar fornecedor" : "Novo fornecedor"}</DialogTitle></DialogHeader><div className="grid gap-4 sm:grid-cols-2"><Field label="Nome / razão social *" value={form.legal_name} onChange={(v) => set("legal_name", v)} /><Field label="CNPJ" value={form.cnpj} onChange={(v) => set("cnpj", formatCnpj(v))} /><Field label="UF" maxLength={2} value={form.uf} onChange={(v) => set("uf", v.toUpperCase())} /><Field label="Cidade" value={form.cidade} onChange={(v) => set("cidade", v)} /><Field label="Site" value={form.website} onChange={(v) => set("website", v)} /><Field label="Telefone" value={form.telefone} onChange={(v) => set("telefone", v)} /><Field label="WhatsApp" value={form.whatsapp} onChange={(v) => set("whatsapp", v)} /><Field label="E-mail" type="email" value={form.email} onChange={(v) => set("email", v)} /><Field label="Contato" value={form.contact_name} onChange={(v) => set("contact_name", v)} /><Field label="Vendedor" value={form.vendedor} onChange={(v) => set("vendedor", v)} /><MultiNicheFields value={selection} onChange={setSelection} /><div className="space-y-1.5"><Label>Vende sob demanda?</Label><Select value={form.vende_sob_demanda} onValueChange={(v) => set("vende_sob_demanda", v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="sim">SIM</SelectItem><SelectItem value="nao">NÃO</SelectItem><SelectItem value="parcialmente">PARCIALMENTE</SelectItem></SelectContent></Select></div><Field label="Quantidade mínima de compra" type="number" value={form.quantidade_minima} onChange={(v) => set("quantidade_minima", v)} /><Field label="Prazo de envio (dias)" type="number" value={form.avg_delivery_days} onChange={(v) => set("avg_delivery_days", v)} /><Field label="Data da última cotação" type="date" value={form.ultima_cotacao} onChange={(v) => set("ultima_cotacao", v)} /><Field label="Frete até Belo Horizonte" value={form.frete_bh} onChange={(v) => set("frete_bh", v)} /><Field label="Condições de pagamento" value={form.condicoes_pagamento} onChange={(v) => set("condicoes_pagamento", v)} /><Field label="Garantia" value={form.garantia} onChange={(v) => set("garantia", v)} /><div className="space-y-1.5"><Label>Nível de confiança</Label><Select value={form.trust_level} onValueChange={(v) => set("trust_level", v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{TRUST_LEVELS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent></Select></div><Toggle label="Emite nota fiscal" checked={form.issues_invoice} onChange={(v) => set("issues_invoice", v)} /><Toggle label="Estoque real" checked={form.real_stock} onChange={(v) => set("real_stock", v)} /><Toggle label="Entrega no órgão" checked={form.delivers_to_agency} onChange={(v) => set("delivers_to_agency", v)} /><Area label="Política de troca/devolução" value={form.return_policy} onChange={(v) => set("return_policy", v)} /><Area label="Observações" value={form.notes} onChange={(v) => set("notes", v)} /></div><DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button><Button disabled={save.isPending} onClick={() => save.mutate()}>Salvar fornecedor</Button></DialogFooter></DialogContent></Dialog>
+  </>;
 }
 
-function Field({
-  label,
-  value,
-  onChange,
-  type = "text",
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  type?: string;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} />
-    </div>
-  );
-}
-
-function Toggle({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <div className="flex items-center gap-2 pt-6">
-      <Switch checked={checked} onCheckedChange={onChange} />
-      <span className="text-sm">{label}</span>
-    </div>
-  );
-}
+function Filter({ value, onChange, label, items }: { value: string; onChange: (v: string) => void; label: string; items: { id: string; nome: string }[] }) { return <Select value={value} onValueChange={onChange}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{label}</SelectItem>{items.map((item) => <SelectItem key={item.id} value={item.id}>{item.nome}</SelectItem>)}</SelectContent></Select>; }
+function Demand({ value }: { value: string }) { return <Badge variant={value === "sim" ? "default" : "outline"} className={value === "sim" ? "bg-success text-success-foreground" : ""}>{value === "sim" ? "SIM" : value === "parcialmente" ? "PARCIALMENTE" : "NÃO"}</Badge>; }
+function Field({ label, value, onChange, type = "text", maxLength }: { label: string; value: string; onChange: (v: string) => void; type?: string; maxLength?: number }) { return <div className="space-y-1.5"><Label>{label}</Label><Input type={type} maxLength={maxLength} value={value} onChange={(e) => onChange(e.target.value)} /></div>; }
+function Area({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) { return <div className="space-y-1.5 sm:col-span-2"><Label>{label}</Label><Textarea value={value} onChange={(e) => onChange(e.target.value)} /></div>; }
+function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) { return <label className="flex items-center gap-2 pt-6 text-sm"><Switch checked={checked} onCheckedChange={onChange} />{label}</label>; }
