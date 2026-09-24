@@ -43,6 +43,7 @@ import {
   type StatusKey,
   type TrafficKey,
 } from "@/lib/domain";
+import { LINKED_ITEMS_KEY } from "@/lib/linked-items";
 import { Archive, ArchiveRestore, ArrowLeft, Pencil, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/oportunidades/$id")({
@@ -106,6 +107,7 @@ function OpportunityDetail() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["opportunity", id] });
+      qc.invalidateQueries({ queryKey: LINKED_ITEMS_KEY });
       qc.invalidateQueries({ queryKey: ["opportunities"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
     },
@@ -150,6 +152,7 @@ function OpportunityDetail() {
       setItemForm(emptyItem);
       toast.success("Item adicionado");
       qc.invalidateQueries({ queryKey: ["opportunity", id] });
+      qc.invalidateQueries({ queryKey: LINKED_ITEMS_KEY });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -159,7 +162,7 @@ function OpportunityDetail() {
       const { error } = await supabase.from("opportunity_items").delete().eq("id", itemId);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["opportunity", id] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["opportunity", id] }); qc.invalidateQueries({ queryKey: LINKED_ITEMS_KEY }); },
   });
 
   const saveItem = useMutation({
@@ -187,6 +190,7 @@ function OpportunityDetail() {
       setEditItem(null);
       toast.success("Item atualizado");
       qc.invalidateQueries({ queryKey: ["opportunity", id] });
+      qc.invalidateQueries({ queryKey: LINKED_ITEMS_KEY });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -212,6 +216,7 @@ function OpportunityDetail() {
     onSuccess: () => {
       toast.success("Itens importados da análise");
       qc.invalidateQueries({ queryKey: ["opportunity", id] });
+      qc.invalidateQueries({ queryKey: LINKED_ITEMS_KEY });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -246,6 +251,7 @@ function OpportunityDetail() {
       setOppForm(null);
       toast.success("Dados do processo atualizados");
       qc.invalidateQueries({ queryKey: ["opportunity", id] });
+      qc.invalidateQueries({ queryKey: LINKED_ITEMS_KEY });
       qc.invalidateQueries({ queryKey: ["opportunities"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
     },
