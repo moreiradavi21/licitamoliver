@@ -32,6 +32,9 @@ export interface LinkedQuote {
   margin: number | null;
   stockConfirmed: boolean;
   date: string;
+  nichoId: string | null;
+  subnichoId: string | null;
+  microId: string | null;
 }
 
 export interface LinkedGroup {
@@ -45,6 +48,9 @@ export interface LinkedGroup {
   maxPrice: number | null;
   avgMargin: number | null;
   lastDate: string | null;
+  nichoIds: string[];
+  subnichoIds: string[];
+  microIds: string[];
 }
 
 type Row = {
@@ -62,7 +68,14 @@ type Row = {
   stock_confirmed: boolean;
   created_at: string;
   updated_at: string;
-  opportunities: { id: string; number: string; agency: string | null } | null;
+  opportunities: {
+    id: string;
+    number: string;
+    agency: string | null;
+    nicho_id: string | null;
+    subnicho_id: string | null;
+    micro_nicho_id: string | null;
+  } | null;
   suppliers: { id: string; legal_name: string } | null;
 };
 
@@ -97,6 +110,9 @@ function toQuote(r: Row): LinkedQuote {
     margin,
     stockConfirmed: r.stock_confirmed,
     date: r.updated_at || r.created_at,
+    nichoId: r.opportunities?.nicho_id ?? null,
+    subnichoId: r.opportunities?.subnicho_id ?? null,
+    microId: r.opportunities?.micro_nicho_id ?? null,
   };
 }
 
@@ -108,7 +124,7 @@ export function useLinkedQuotes() {
       const { data, error } = await supabase
         .from("opportunity_items")
         .select(
-          "id, description, item_id, supplier_id, unit_cost, proposed_price, quantity, freight, taxes, other_costs, risk_reserve, stock_confirmed, created_at, updated_at, opportunities(id, number, agency), suppliers(id, legal_name)",
+          "id, description, item_id, supplier_id, unit_cost, proposed_price, quantity, freight, taxes, other_costs, risk_reserve, stock_confirmed, created_at, updated_at, opportunities(id, number, agency, nicho_id, subnicho_id, micro_nicho_id), suppliers(id, legal_name)",
         )
         .not("supplier_id", "is", null)
         .order("updated_at", { ascending: false });
@@ -119,6 +135,8 @@ export function useLinkedQuotes() {
     },
   });
 }
+
+const uniq = (values: (string | null)[]) => [...new Set(values.filter((v): v is string => !!v))];
 
 const avg = (values: number[]) =>
   values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
@@ -153,6 +171,9 @@ export function groupQuotes(
         maxPrice: prices.length ? Math.max(...prices) : null,
         avgMargin: avg(margins),
         lastDate: sorted[0]?.date ?? null,
+        nichoIds: uniq(sorted.map((q) => q.nichoId)),
+        subnichoIds: uniq(sorted.map((q) => q.subnichoId)),
+        microIds: uniq(sorted.map((q) => q.microId)),
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
