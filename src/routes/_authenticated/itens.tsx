@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserId } from "@/hooks/use-user";
@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { brl, CLASSIFICATIONS, pct, SUPPLIER_ROLES } from "@/lib/domain";
 import { Badge } from "@/components/ui/badge";
+import { useNicheCatalog } from "@/components/NicheFields";
 import {
   groupQuotes,
   normalizeItemName,
@@ -88,6 +89,11 @@ function ItemsPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [priceForm, setPriceForm] = useState(emptyPrice);
   const [search, setSearch] = useState("");
+  const [niche, setNiche] = useState("all");
+  const [sub, setSub] = useState("all");
+  const [micro, setMicro] = useState("all");
+  const [grouped, setGrouped] = useState(true);
+  const catalog = useNicheCatalog();
 
   const { data = [] } = useQuery({
     queryKey: ["items"],
@@ -231,7 +237,116 @@ function ItemsPage() {
     normalizeItemName(`${i.name} ${i.brand ?? ""} ${i.model ?? ""}`).includes(term),
   );
   const autoRows = autoGroups.filter((g) => g.key.includes(term));
-  const isEmpty = manualRows.length === 0 && autoRows.length === 0;
+
+  // Nichos de cada item vêm das oportunidades em que ele aparece.
+  const nichesOf = (g: LinkedGroup | undefined) => ({
+    n: g?.nichoIds ?? [],
+    s: g?.subnichoIds ?? [],
+    m: g?.microIds ?? [],
+  });
+  const matchesNiche = (g: LinkedGroup | undefined) => {
+    const x = nichesOf(g);
+    return (
+      (niche === "all" || (niche === "none" ? x.n.length === 0 : x.n.includes(niche))) &&
+      (sub === "all" || x.s.includes(sub)) &&
+      (micro === "all" || x.m.includes(micro))
+    );
+  };
+  const manualFiltered = manualRows.filter((i) => matchesNiche(groupByItem.get(i.id)));
+  const autoFiltered = autoRows.filter((g) => matchesNiche(g));
+  const isEmpty = manualFiltered.length === 0 && autoFiltered.length === 0;
+  const sections = grouped
+    ? [
+        ...(catalog.data?.niches ?? []).map((n) => ({
+          key: n.id,
+          label: n.nome,
+          manual: manualFiltered.filter((i) => nichesOf(groupByItem.get(i.id)).n.includes(n.id)),
+          auto: autoFiltered.filter((g) => g.nichoIds.includes(n.id)),
+        })),
+        {
+          key: "none",
+          label: "Sem nicho",
+          manual: manualFiltered.filter((i) => nichesOf(groupByItem.get(i.id)).n.length === 0),
+          auto: autoFiltered.filter((g) => g.nichoIds.length === 0),
+        },
+      ].filter((sec) => sec.manual.length + sec.auto.length > 0)
+    : [{ key: "all", label: "", manual: manualFiltered, auto: autoFiltered }];
+
+  const renderManual = (i: (typeof data)[number], prefix: string) => {
+    const g = groupByItem.get(i.id);
+    const cost = i.historic_cost ?? g?.avgCost ?? null;
+    const min = i.min_price ?? g?.minPrice ?? null;
+    const max = i.max_price ?? g?.maxPrice ?? null;
+    const margin = i.avg_margin ?? g?.avgMargin ?? null;
+    return (
+      <tr
+        key={`${prefix}:${i.id}`}
+        onClick={() => setSelected(i.id)}
+        className={`cursor-pointer border-b border-border/60 last:border-0 hover:bg-accent/30 ${selected === i.id ? "bg-accent/40" : ""}`}
+      >
+        <td className="p-3">
+          <span className="font-medium">{i.name}</span>
+          <span className="block text-xs text-muted-foreground">
+            {[i.brand, i.model].filter(Boolean).join(" · ") || "—"}{" "}
+            {i.won_before ? "· 🏆 já ganhou" : ""}
+            {g ? ` · ${g.quotes.length} cotação(ões) em oportunidades` : ""}
+          </span>
+        </td>
+        <td className="p-3">
+          {cost != null ? brl(Number(cost)) : "—"}
+          {g?.lastCost != null && (
+            <span className="block text-xs text-muted-foreground">último {brl(g.lastCost)}</span>
+          )}
+        </td>
+        <td className="p-3">{min != null || max != null ? `${brl(min)} – ${brl(max)}` : "—"}</td>
+        <td className="p-3">{margin != null ? pct(Number(margin)) : "—"}</td>
+        <td className="p-3">
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={(e) => {
+              e.stopPropagation();
+              removeItem.mutate(i.id);
+            }}
+          >
+            <Trash2 className="size-4" />
+          </Button>
+        </td>
+      </tr>
+    );
+  };
+  const renderAuto = (g: LinkedGroup, prefix: string) => {
+    const rowKey = `auto:${g.key}`;
+    return (
+      <tr
+        key={`${prefix}:${rowKey}`}
+        onClick={() => setSelected(rowKey)}
+        className={`cursor-pointer border-b border-border/60 last:border-0 hover:bg-accent/30 ${selected === rowKey ? "bg-accent/40" : ""}`}
+      >
+        <td className="p-3">
+          <span className="font-medium">{g.name}</span>
+          <span className="block text-xs text-muted-foreground">
+            <Badge variant="outline" className="mr-1 px-1.5 py-0 text-[10px]">
+              das oportunidades
+            </Badge>
+            {g.quotes.length} cotação(ões) · {new Set(g.quotes.map((q) => q.supplierId)).size}{" "}
+            fornecedor(es)
+          </span>
+        </td>
+        <td className="p-3">
+          {g.avgCost != null ? brl(g.avgCost) : "—"}
+          {g.lastCost != null && (
+            <span className="block text-xs text-muted-foreground">último {brl(g.lastCost)}</span>
+          )}
+        </td>
+        <td className="p-3">
+          {g.minPrice != null ? `${brl(g.minPrice)} – ${brl(g.maxPrice)}` : "—"}
+        </td>
+        <td className="p-3">{g.avgMargin != null ? pct(g.avgMargin) : "—"}</td>
+        <td className="p-3" />
+      </tr>
+    );
+  };
 
   return (
     <>
@@ -322,12 +437,47 @@ function ItemsPage() {
         }
       />
 
-      <Input
-        placeholder="Buscar item"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="mb-4 max-w-xs"
-      />
+      <div className="mb-4 space-y-2">
+        <div className="grid gap-2 md:grid-cols-4">
+          <Input
+            placeholder="Buscar item"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <NicheFilter
+            value={niche}
+            onChange={(v) => {
+              setNiche(v);
+              setSub("all");
+              setMicro("all");
+            }}
+            label="Todos os nichos"
+            items={[...(catalog.data?.niches ?? []), { id: "none", nome: "Sem nicho" }]}
+          />
+          <NicheFilter
+            value={sub}
+            onChange={(v) => {
+              setSub(v);
+              setMicro("all");
+            }}
+            label="Todos os subnichos"
+            items={(catalog.data?.subniches ?? []).filter(
+              (s) => niche === "all" || s.nicho_id === niche,
+            )}
+          />
+          <NicheFilter
+            value={micro}
+            onChange={setMicro}
+            label="Todos os micro-nichos"
+            items={(catalog.data?.micros ?? []).filter(
+              (m) => sub === "all" || m.subnicho_id === sub,
+            )}
+          />
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <Switch checked={grouped} onCheckedChange={setGrouped} /> Agrupar por nicho
+        </label>
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
         <div className="panel overflow-x-auto">
@@ -349,87 +499,25 @@ function ItemsPage() {
                   </td>
                 </tr>
               )}
-              {manualRows.map((i) => {
-                const g = groupByItem.get(i.id);
-                const cost = i.historic_cost ?? g?.avgCost ?? null;
-                const min = i.min_price ?? g?.minPrice ?? null;
-                const max = i.max_price ?? g?.maxPrice ?? null;
-                const margin = i.avg_margin ?? g?.avgMargin ?? null;
-                return (
-                  <tr
-                    key={i.id}
-                    onClick={() => setSelected(i.id)}
-                    className={`cursor-pointer border-b border-border/60 last:border-0 hover:bg-accent/30 ${selected === i.id ? "bg-accent/40" : ""}`}
-                  >
-                    <td className="p-3">
-                      <span className="font-medium">{i.name}</span>
-                      <span className="block text-xs text-muted-foreground">
-                        {[i.brand, i.model].filter(Boolean).join(" · ") || "—"}{" "}
-                        {i.won_before ? "· 🏆 já ganhou" : ""}
-                        {g ? ` · ${g.quotes.length} cotação(ões) em oportunidades` : ""}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      {cost != null ? brl(Number(cost)) : "—"}
-                      {g?.lastCost != null && (
-                        <span className="block text-xs text-muted-foreground">
-                          último {brl(g.lastCost)}
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-3">
-                      {min != null || max != null ? `${brl(min)} – ${brl(max)}` : "—"}
-                    </td>
-                    <td className="p-3">{margin != null ? pct(Number(margin)) : "—"}</td>
-                    <td className="p-3">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeItem.mutate(i.id);
-                        }}
+              {sections.map((section) => (
+                <Fragment key={section.key}>
+                  {grouped && (
+                    <tr className="border-b border-border bg-muted/40">
+                      <td
+                        className="p-2 px-3 text-xs font-semibold uppercase tracking-wide"
+                        colSpan={5}
                       >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                );
-              })}
-              {autoRows.map((g) => {
-                const rowKey = `auto:${g.key}`;
-                return (
-                  <tr
-                    key={rowKey}
-                    onClick={() => setSelected(rowKey)}
-                    className={`cursor-pointer border-b border-border/60 last:border-0 hover:bg-accent/30 ${selected === rowKey ? "bg-accent/40" : ""}`}
-                  >
-                    <td className="p-3">
-                      <span className="font-medium">{g.name}</span>
-                      <span className="block text-xs text-muted-foreground">
-                        <Badge variant="outline" className="mr-1 px-1.5 py-0 text-[10px]">
-                          das oportunidades
-                        </Badge>
-                        {g.quotes.length} cotação(ões) ·{" "}
-                        {new Set(g.quotes.map((q) => q.supplierId)).size} fornecedor(es)
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      {g.avgCost != null ? brl(g.avgCost) : "—"}
-                      {g.lastCost != null && (
-                        <span className="block text-xs text-muted-foreground">
-                          último {brl(g.lastCost)}
+                        {section.label}{" "}
+                        <span className="font-normal text-muted-foreground">
+                          ({section.manual.length + section.auto.length})
                         </span>
-                      )}
-                    </td>
-                    <td className="p-3">
-                      {g.minPrice != null ? `${brl(g.minPrice)} – ${brl(g.maxPrice)}` : "—"}
-                    </td>
-                    <td className="p-3">{g.avgMargin != null ? pct(g.avgMargin) : "—"}</td>
-                    <td className="p-3" />
-                  </tr>
-                );
-              })}
+                      </td>
+                    </tr>
+                  )}
+                  {section.manual.map((i) => renderManual(i, section.key))}
+                  {section.auto.map((g) => renderAuto(g, section.key))}
+                </Fragment>
+              ))}
             </tbody>
           </table>
         </div>
@@ -591,5 +679,33 @@ function Field({
       <Label>{label}</Label>
       <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} />
     </div>
+  );
+}
+
+function NicheFilter({
+  value,
+  onChange,
+  label,
+  items,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  label: string;
+  items: { id: string; nome: string }[];
+}) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">{label}</SelectItem>
+        {items.map((item) => (
+          <SelectItem key={item.id} value={item.id}>
+            {item.nome}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
